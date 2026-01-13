@@ -6,6 +6,7 @@ import 'package:mobile/features/dashboard/presentation/widgets/charts/hourly_sal
 import 'package:mobile/features/dashboard/presentation/widgets/charts/responsive_chart_carousel.dart';
 import 'package:mobile/features/dashboard/presentation/widgets/charts/summary_pie_chart.dart';
 import 'package:mobile/features/dashboard/presentation/widgets/charts/weekly_sales_bar_chart.dart';
+import 'package:mobile/features/dashboard/presentation/widgets/dialogs/turnover_detail_dialog.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../widgets/stat_card.dart';
 import '../providers/dashboard_provider.dart';
@@ -91,6 +92,11 @@ class DashboardScreen extends ConsumerWidget {
                         color: Colors.blue,
                         onTap: () {
                           print("Ciro detayları açılacak...");
+                          // 🔥 Dialogu burada açıyoruz
+                          showDialog(
+                            context: context,
+                            builder: (context) => const TurnoverDetailDialog(),
+                          );
                         },
                       ),
                       // 2. VERİLEN BORÇ
