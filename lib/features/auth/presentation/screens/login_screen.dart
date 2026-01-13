@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_svg/flutter_svg.dart'; // SVG kullanacağız
+import 'package:go_router/go_router.dart';
 import 'package:mobile/features/auth/presentation/providers/auth_controller.dart';
-import 'package:mobile/shared/layouts/main_layout.dart';
 import '../../../../core/responsive/responsive_layout.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../providers/login_state_provider.dart';
@@ -182,11 +181,34 @@ class _LogoAndTitle extends StatelessWidget {
   }
 }
 
-class _LoginForm extends ConsumerWidget {
+class _LoginForm extends ConsumerStatefulWidget {
   const _LoginForm();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_LoginForm> createState() => _LoginFormState();
+}
+
+class _LoginFormState extends ConsumerState<_LoginForm> {
+  late final TextEditingController _usernameController;
+  late final TextEditingController _passwordController;
+
+  @override
+  void initState() {
+    super.initState();
+    // DEV: Geliştirme aşamasında kolaylık olması için varsayılan değerler
+    _usernameController = TextEditingController(text: "patron");
+    _passwordController = TextEditingController(text: "123");
+  }
+
+  @override
+  void dispose() {
+    _usernameController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final isPasswordVisible = ref.watch(passwordVisibilityProvider);
     final isLoading = ref.watch(isLoadingProvider);
 
@@ -200,6 +222,7 @@ class _LoginForm extends ConsumerWidget {
         ),
         const SizedBox(height: 8),
         TextFormField(
+          controller: _usernameController,
           decoration: const InputDecoration(
             hintText: "kullanici_adi",
             prefixIcon: Icon(Icons.person_outline),
@@ -211,6 +234,7 @@ class _LoginForm extends ConsumerWidget {
         const Text("Şifre", style: TextStyle(fontWeight: FontWeight.w600)),
         const SizedBox(height: 8),
         TextFormField(
+          controller: _passwordController,
           obscureText: isPasswordVisible,
           decoration: InputDecoration(
             hintText: "••••••••",
@@ -243,29 +267,14 @@ class _LoginForm extends ConsumerWidget {
               isLoading
                   ? null
                   : () {
-                    // Loading Simülasyonu
-                    // Input değerlerini almak için Controller kullanmak daha doğru ama
-                    // şimdilik hızlıca test etmek için hardcode veya basit controller kullanabilirsin.
-                    // Profesyonel yöntem: TextEditingController tanımlamak.
-
-                    // NOT: Bu örnekte inputları bağlamadığımız için
-                    // gerçek projede TextEditingController eklemelisin.
-                    // Şimdilik test için manuel string gönderiyoruz:
-
                     ref
                         .read(authControllerProvider)
                         .login(
-                          username:
-                              "vet_ahmet", // Buraya textController.text gelecek
-                          password:
-                              "sifre123", // Buraya passwordController.text gelecek
+                          username: _usernameController.text.trim(),
+                          password: _passwordController.text,
                           onSuccess: () {
                             // Dashboard'a Işınlan 🚀
-                            Navigator.of(context).pushReplacement(
-                              MaterialPageRoute(
-                                builder: (_) => const MainLayout(),
-                              ),
-                            );
+                            context.go('/');
                           },
                           onError: (msg) {
                             ScaffoldMessenger.of(context).showSnackBar(

@@ -1,22 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'core/theme/app_theme.dart';
-import 'features/auth/presentation/screens/login_screen.dart';
+import 'core/navigation/app_router.dart';
+import 'core/theme/app_colors.dart';
 
 void main() {
-  runApp(const ProviderScope(child: CariSistemApp()));
+  runApp(const ProviderScope(child: MyApp()));
 }
 
-class CariSistemApp extends StatelessWidget {
-  const CariSistemApp({super.key});
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return MaterialApp.router(
       title: 'Cari Sistem',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme, // Kendi temamız
-      home: const LoginScreen(),
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: AppColors.primary),
+        useMaterial3: true,
+        scaffoldBackgroundColor: AppColors.background,
+      ),
+      routerConfig: AppRouter.router,
     );
   }
 }

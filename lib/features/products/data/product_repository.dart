@@ -27,7 +27,8 @@ class ProductRepository {
 
   // ... getProducts fonksiyonunun altı ...
 
-  Future<void> createProduct(
+  // Geriye oluşturulan ürünü döndürüyoruz ki ID'sini alıp stok ekleyebilelim
+  Future<Product> createProduct(
     Map<String, dynamic> productData, {
     XFile? imageFile,
   }) async {
@@ -46,14 +47,41 @@ class ProductRepository {
 
       final formData = FormData.fromMap(dataMap);
 
-      await _dio.post(
+      final response = await _dio.post(
         ApiConstants.products,
         data: formData,
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
-      // Başarılı olursa void döner, hata varsa catch yakalar.
+
+      // Backend response: { message: "...", product: {...} }
+      return Product.fromJson(response.data['product']);
     } catch (e) {
       throw Exception("Ürün eklenirken hata oluştu: ${e.toString()}");
+    }
+  }
+
+  // YENİ: Stok Ekleme Metodu
+  Future<void> addStock({
+    required String productId,
+    required double quantity,
+    required DateTime expirationDate,
+    String? batchNo,
+  }) async {
+    try {
+      final token = await _storage.read(key: 'auth_token');
+
+      await _dio.post(
+        '${ApiConstants.products}/$productId/stocks',
+        data: {
+          "quantity": quantity,
+          "expiration_date": expirationDate.toIso8601String(),
+          "batch_no": batchNo,
+          "location": "Depo 1", // Varsayılan konum
+        },
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+    } catch (e) {
+      throw Exception("Stok eklenirken hata: $e");
     }
   }
 
@@ -97,5 +125,46 @@ class ProductRepository {
     } catch (e) {
       throw Exception("Ürün güncellenirken hata oluştu: $e");
     }
+  }
+
+  // --- VETILAC & STOK EKSTRALARI ---
+
+  // İlaç Arama (Autocomplete için)
+  Future<List<Map<String, dynamic>>> searchVetilac(String query) async {
+    try {
+      final token = await _storage.read(key: 'auth_token');
+      final response = await _dio.get(
+        '${ApiConstants.baseUrl}/vetilac/search',
+        queryParameters: {'q': query},
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      return List<Map<String, dynamic>>.from(response.data);
+    } catch (e) {
+      return []; // Hata durumunda boş liste dön, akışı bozma
+    }
+  }
+
+  // İlaç Detayı Getir
+  Future<Map<String, dynamic>?> getVetilacDetails(String id) async {
+    try {
+      final token = await _storage.read(key: 'auth_token');
+      final response = await _dio.get(
+        '${ApiConstants.baseUrl}/vetilac/$id',
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      return response.data;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Ürünün Stok Geçmişini Getir
+  Future<List<dynamic>> getProductStocks(String productId) async {
+    final token = await _storage.read(key: 'auth_token');
+    final response = await _dio.get(
+      '${ApiConstants.products}/$productId/stocks',
+      options: Options(headers: {'Authorization': 'Bearer $token'}),
+    );
+    return response.data;
   }
 }

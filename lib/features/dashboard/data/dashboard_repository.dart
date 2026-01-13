@@ -1,23 +1,41 @@
 import 'package:dio/dio.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import '../../../../core/constants/api_constants.dart'; // Sabitleri çağır
+import 'package:mobile/features/dashboard/data/models/dashboard_chart_model.dart';
+import '../../../../core/api/api_client.dart';
+import '../../../../core/constants/api_constants.dart';
+import 'models/dashboard_summary_model.dart';
 
 class DashboardRepository {
-  final Dio _dio = Dio(BaseOptions(baseUrl: ApiConstants.baseUrl));
-  final _storage = const FlutterSecureStorage();
+  final ApiClient _apiClient;
 
-  Future<Map<String, dynamic>> getDashboardSummary() async {
+  DashboardRepository(this._apiClient);
+
+  Future<DashboardSummaryModel> getSummary() async {
     try {
-      final token = await _storage.read(key: 'auth_token');
+      final response = await _apiClient.dio.get(ApiConstants.dashboardSummary);
 
-      final response = await _dio.get(
-        ApiConstants.dashboardSummary, // Endpoint buradan geliyor
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
-      );
+      if (response.statusCode == 200) {
+        return DashboardSummaryModel.fromJson(response.data);
+      } else {
+        throw Exception('Dashboard verileri alınamadı.');
+      }
+    } on DioException catch (e) {
+      throw Exception(e.response?.data['error'] ?? 'Bağlantı hatası');
+    }
+  }
 
-      return response.data;
-    } catch (e) {
-      throw Exception("Dashboard verisi çekilemedi: $e");
+  // 📈 YENİ: Grafik Verileri
+  Future<DashboardChartModel> getCharts() async {
+    try {
+      // Endpoint: /dashboard/charts
+      final response = await _apiClient.dio.get('/dashboard/charts');
+
+      if (response.statusCode == 200) {
+        return DashboardChartModel.fromJson(response.data);
+      } else {
+        throw Exception('Grafik verileri alınamadı.');
+      }
+    } on DioException catch (e) {
+      throw Exception(e.response?.data['error'] ?? 'Bağlantı hatası');
     }
   }
 }

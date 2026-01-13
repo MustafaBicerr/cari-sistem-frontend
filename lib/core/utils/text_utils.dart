@@ -15,6 +15,7 @@ String normalizeText(String? text) {
       .replaceAll('ö', 'o')
       .replaceAll('Ç', 'c')
       .replaceAll('ç', 'c')
-      .toLowerCase()
-      .trim();
+      .trim()
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .replaceAll(' ', '_');
 }

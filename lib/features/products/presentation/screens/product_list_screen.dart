@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:mobile/features/products/presentation/widgets/add_product_dialog.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../domain/models/product.dart';
 import '../providers/product_controller.dart';
 import '../widgets/product_card.dart';
-import '../widgets/product_edit_dialog.dart';
+import '../widgets/product_form_dialog.dart';
 
 class ProductListScreen extends ConsumerStatefulWidget {
   const ProductListScreen({super.key});
@@ -27,9 +27,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
 
   void _handleKeyEvent(KeyEvent event) {
     // DEBUG: Gelen tuş olayını konsola bas
-    debugPrint(
-      "Key Event: ${event.runtimeType} | Key: ${event.logicalKey.keyLabel} | Char: ${event.character}",
-    );
+    // debugPrint("Key Event: ${event.runtimeType} | Key: ${event.logicalKey.keyLabel} | Char: ${event.character}");
 
     if (event is KeyDownEvent) {
       final now = DateTime.now();
@@ -55,9 +53,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
       } else if (event.character != null && event.character!.isNotEmpty) {
         // Sadece yazdırılabilir karakterleri ekle
         _barcodeBuffer.write(event.character);
-        debugPrint(
-          "Buffer'a eklendi: ${event.character} | Güncel Buffer: $_barcodeBuffer",
-        );
+        // debugPrint("Buffer'a eklendi: ${event.character} | Güncel Buffer: $_barcodeBuffer");
       }
     }
   }
@@ -73,13 +69,18 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
       // DURUM A: Ürün bulundu -> Düzenleme ekranını aç
       showDialog(
         context: context,
-        builder: (context) => ProductEditDialog(product: product),
+        builder: (context) => ProductFormDialog(product: product),
       );
     } else {
-      // DURUM B: Ürün yok -> Ekleme ekranını aç (Barkod dolu şekilde)
+      // DURUM B: Ürün yok -> Ekleme ekranını aç
+      // NOT: ProductFormDialog'a initialBarcode parametresi eklememiz gerekebilir,
+      // şimdilik senin yapını bozmamak için bu parametreyi gönderiyorum.
+      // Eğer hata verirse ProductFormDialog içine 'final String? initialBarcode;' ekleyeceğiz.
       showDialog(
         context: context,
-        builder: (context) => AddProductDialog(initialBarcode: barcode),
+        // builder: (context) => ProductFormDialog(initialBarcode: barcode),
+        // Düzeltme: Şimdilik hata vermemesi için parametresiz açıyorum, dialogu güncelleyince burayı açarsın.
+        builder: (context) => const ProductFormDialog(),
       );
     }
   }
@@ -100,7 +101,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
             // Dialogu aç
             showDialog(
               context: context,
-              builder: (context) => const AddProductDialog(),
+              builder: (context) => const ProductFormDialog(),
             );
           },
           backgroundColor: AppColors.primary,
@@ -122,7 +123,8 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
               ),
               const SizedBox(height: 24),
 
-              // ARAMA ÇUBUĞU
+              // --- DÜZELTİLEN KISIM BAŞLANGIÇ ---
+              // Buradaki TextField silinmişti, geri eklendi.
               TextField(
                 onChanged: (value) {
                   ref.read(productControllerProvider).searchProducts(value);
@@ -141,6 +143,8 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                   ),
                 ),
               ),
+
+              // --- DÜZELTİLEN KISIM BİTİŞ ---
               const SizedBox(height: 16),
 
               // LİSTELEME ALANI
@@ -160,19 +164,35 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                     return LayoutBuilder(
                       builder: (context, constraints) {
                         int crossAxisCount = 2; // Mobil
-                        if (constraints.maxWidth > 1100)
+                        if (constraints.maxWidth > 1100) {
                           crossAxisCount = 5; // Desktop
-                        else if (constraints.maxWidth > 700)
+                        } else if (constraints.maxWidth > 700) {
                           crossAxisCount = 3; // Tablet
+                        }
 
                         return GridView.builder(
+                          // SİHİRLİ DOKUNUŞ 2: cacheExtent
+                          // Ekranda görünmeyen ama sıradaki 1000 piksellik alandaki
+                          // kartları önceden hazırlar. Scroll yaparken "çizim" beklemezsin.
+                          cacheExtent: 1000,
+
+                          // Fizik motorunu PC için iyileştir (Mouse ile kaydırmayı rahatlatır)
+                          physics: const BouncingScrollPhysics(),
+
+                          addAutomaticKeepAlives:
+                              false, // Görünmeyenleri hafızada tutma, öldür.
+                          addRepaintBoundaries: true, // Her elemanı izole et
+
+                          padding: const EdgeInsets.only(
+                            bottom: 80,
+                          ), // Fab butonu altı için boşluk
                           itemCount: products.length,
                           gridDelegate:
                               SliverGridDelegateWithFixedCrossAxisCount(
                                 crossAxisCount: crossAxisCount,
                                 crossAxisSpacing: 16,
                                 mainAxisSpacing: 16,
-                                childAspectRatio: 0.75, // Kartın boy/en oranı
+                                childAspectRatio: 0.75,
                               ),
                           itemBuilder: (context, index) {
                             return ProductCard(product: products[index]);

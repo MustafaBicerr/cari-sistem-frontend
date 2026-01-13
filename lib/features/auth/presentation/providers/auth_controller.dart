@@ -1,8 +1,13 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/api/api_client.dart'; // ApiClient Provider'ı buradan alıyoruz
 import '../../data/auth_repository.dart';
 import 'login_state_provider.dart';
 
-final authRepositoryProvider = Provider((ref) => AuthRepository());
+// 👇 DÜZELTME: Repository artık ApiClient'tan besleniyor
+final authRepositoryProvider = Provider<AuthRepository>((ref) {
+  final apiClient = ref.watch(apiClientProvider);
+  return AuthRepository(dio: apiClient.dio, storage: apiClient.storage);
+});
 
 final authControllerProvider = Provider((ref) {
   return AuthController(ref);
@@ -19,7 +24,6 @@ class AuthController {
     required void Function() onSuccess,
     required void Function(String error) onError,
   }) async {
-    // 1. Loading başlat
     _ref.read(isLoadingProvider.notifier).state = true;
 
     try {
@@ -27,14 +31,13 @@ class AuthController {
       final success = await repo.login(username, password);
 
       if (success) {
-        onSuccess(); // Sayfayı değiştir
+        onSuccess();
       } else {
         onError("Giriş başarısız. Bilgileri kontrol edin.");
       }
     } catch (e) {
       onError(e.toString());
     } finally {
-      // 2. Loading durdur
       _ref.read(isLoadingProvider.notifier).state = false;
     }
   }

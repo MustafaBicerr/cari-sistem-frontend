@@ -3,19 +3,16 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:mobile/core/constants/api_constants.dart';
 
 class AuthRepository {
-  // BaseUrl artık sabit dosyasından geliyor
-  final Dio _dio = Dio(
-    BaseOptions(
-      baseUrl: ApiConstants.baseUrl,
-      connectTimeout: const Duration(milliseconds: ApiConstants.connectTimeout),
-    ),
-  );
+  final Dio _dio;
+  final FlutterSecureStorage _storage;
 
-  final _storage = const FlutterSecureStorage();
+  // Artık dışarıdan (ApiClient'tan) gelen Dio ve Storage'ı kullanıyor
+  AuthRepository({required Dio dio, required FlutterSecureStorage storage})
+    : _dio = dio,
+      _storage = storage;
 
   Future<bool> login(String username, String password) async {
     try {
-      // Endpoint artık sabit dosyasından geliyor
       final response = await _dio.post(
         ApiConstants.login,
         data: {'username': username, 'password': password},
@@ -23,11 +20,13 @@ class AuthRepository {
 
       if (response.statusCode == 200) {
         final token = response.data['token'];
+        // Backend'den 'tenant_id' geliyorsa onu da kaydedebiliriz burada
         await _storage.write(key: 'auth_token', value: token);
         return true;
       }
       return false;
     } on DioException catch (e) {
+      // Hata yönetimi güzel, aynen kalsın
       print("Login Hatası: ${e.response?.data ?? e.message}");
       throw e.response?.data['message'] ?? 'Bir hata oluştu';
     }

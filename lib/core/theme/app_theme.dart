@@ -14,23 +14,26 @@ class AppTheme {
 
       // Input Alanları (TextField Genotipi)
       inputDecorationTheme: InputDecorationTheme(
-        filled: true,
-        fillColor: Colors.white,
+        filled: true, // Arka planı doldur
+        fillColor: AppColors.textHint, // Daha soft bir renk
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 20,
           vertical: 16,
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12), // Hafif yuvarlak
-          borderSide: BorderSide.none,
+          borderSide: const BorderSide(color: Colors.grey), // Gri çerçeve
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.transparent),
+          borderSide: BorderSide(color: Colors.grey.shade300), // Daha silik gri
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.primary, width: 2),
+          borderSide: const BorderSide(
+            color: AppColors.primary,
+            width: 2,
+          ), // Odaklanınca belirgin
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),

@@ -53,13 +53,17 @@ class ProductController {
 
   Future<void> addProduct({
     required String name,
+    required String normalizedName,
     required String barcode,
-    required double buyPrice,
-    required double sellPrice,
-    required double stock,
+    required double buyingPrice,
+    required double sellingPrice,
+    required double initialStock,
     required String unitType, // YENİ: Zorunlu (PIECE, WEIGHT, VOLUME)
-    int taxRate = 0, // YENİ: Opsiyonel (Varsayılan 0)
-    int lowStockLimit = 10, // Varsayılan 10 (VS Code bunu sevecek)
+    int vatRate = 0, // İsteğin üzerine default 0
+    double criticalStockLevel = 10,
+    DateTime? expirationDate, // YENİ: SKT
+    Map<String, dynamic>? localDetails, // YENİ: Detaylar ve Notlar
+    String? vetilacImagePath, // YENİ: Vetilac'tan gelen resim yolu
     XFile? image,
     required void Function() onSuccess,
     required void Function(String error) onError,
@@ -69,16 +73,35 @@ class ProductController {
 
       final newProduct = {
         "name": name,
+        "normalized_name": normalizedName,
         "barcode": barcode,
-        "buy_price": buyPrice,
-        "sell_price": sellPrice,
-        "current_stock": stock,
-        "unit_type": unitType, // DB'ye gönderiyoruz
-        "tax_rate": taxRate, // DB'ye gönderiyoruz
-        "low_stock_limit": lowStockLimit,
+        "buying_price": buyingPrice,
+        "selling_price": sellingPrice,
+        // "stock_quantity": stock, // Backend create endpoint'i bunu almıyor artık
+        "unit_type": unitType,
+        "vat_rate": vatRate,
+        "critical_stock_level": criticalStockLevel,
+        "currency": "TRY",
+        "local_details": localDetails ?? {},
+        if (vetilacImagePath != null) "custom_image_path": vetilacImagePath,
       };
 
-      await repo.createProduct(newProduct, imageFile: image);
+      // 1. Ürünü oluştur
+      final createdProduct = await repo.createProduct(
+        newProduct,
+        imageFile: image,
+      );
+
+      // 2. Eğer başlangıç stoğu girildiyse, stok hareketini ekle
+      if (initialStock > 0) {
+        await repo.addStock(
+          productId: createdProduct.id,
+          quantity: initialStock,
+          expirationDate:
+              expirationDate ?? DateTime.now().add(const Duration(days: 365)),
+          batchNo: "INIT-${DateTime.now().year}",
+        );
+      }
 
       _ref.invalidate(productListProvider);
       onSuccess();
@@ -117,5 +140,32 @@ class ProductController {
     } catch (e) {
       onError(e.toString());
     }
+  }
+
+  // --- YENİ METODLAR ---
+
+  Future<List<Map<String, dynamic>>> searchVetilac(String query) {
+    return _ref.read(productRepositoryProvider).searchVetilac(query);
+  }
+
+  Future<Map<String, dynamic>?> getVetilacDetails(String id) {
+    return _ref.read(productRepositoryProvider).getVetilacDetails(id);
+  }
+
+  Future<List<dynamic>> getProductStocks(String productId) {
+    return _ref.read(productRepositoryProvider).getProductStocks(productId);
+  }
+
+  Future<List<Product>> getProductSuggestions(String pattern) async {
+    final productsState = _ref.read(productListProvider);
+    final products = productsState.asData?.value ?? [];
+    final normalizedPattern = normalizeText(pattern);
+
+    return products.where((product) {
+      final pName = product.normalizedName ?? normalizeText(product.name);
+      final pBarcode = product.barcode ?? '';
+      return pName.contains(normalizedPattern) ||
+          pBarcode.contains(normalizedPattern);
+    }).toList();
   }
 }
