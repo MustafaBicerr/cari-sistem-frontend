@@ -107,32 +107,32 @@ class _TurnoverListItemState extends State<_TurnoverListItem> {
   double get totalInflationDiff {
     double diff = 0;
 
-    // 🔥🔥🔥 DEBUG 2: HESAPLAMA LOGLARI 🔥🔥🔥
-    debugPrint("\n🔎 ÜRÜN ANALİZİ BAŞLIYOR (${widget.item.customerName})");
+    // // 🔥🔥🔥 DEBUG 2: HESAPLAMA LOGLARI 🔥🔥🔥
+    // debugPrint("\n🔎 ÜRÜN ANALİZİ BAŞLIYOR (${widget.item.customerName})");
 
-    for (var prod in widget.item.items) {
-      final bool isUnpaid = prod.paymentStatus == 'UNPAID';
-      final bool hasPriceHike = prod.currentPrice > prod.snapshotPrice;
+    // for (var prod in widget.item.items) {
+    //   final bool isUnpaid = prod.paymentStatus == 'UNPAID';
+    //   final bool hasPriceHike = prod.currentPrice > prod.snapshotPrice;
 
-      debugPrint("   📦 ${prod.productName}:");
-      debugPrint("      -> Durum: ${prod.paymentStatus}");
-      debugPrint("      -> Eski Fiyat (Snapshot): ${prod.snapshotPrice}");
-      debugPrint("      -> Yeni Fiyat (Current): ${prod.currentPrice}");
-      debugPrint(
-        "      -> Zam Var mı?: $hasPriceHike (${prod.currentPrice} > ${prod.snapshotPrice})",
-      );
+    //   debugPrint("   📦 ${prod.productName}:");
+    //   debugPrint("      -> Durum: ${prod.paymentStatus}");
+    //   debugPrint("      -> Eski Fiyat (Snapshot): ${prod.snapshotPrice}");
+    //   debugPrint("      -> Yeni Fiyat (Current): ${prod.currentPrice}");
+    //   debugPrint(
+    //     "      -> Zam Var mı?: $hasPriceHike (${prod.currentPrice} > ${prod.snapshotPrice})",
+    //   );
 
-      if (isUnpaid && hasPriceHike) {
-        final itemDiff =
-            (prod.currentPrice - prod.snapshotPrice) * prod.quantity;
-        diff += itemDiff;
-        debugPrint("      💰 FARK EKLENDİ: +$itemDiff");
-      } else {
-        debugPrint("      ⛔ FARK EKLENMEDİ (Ya ödendi ya da zam yok)");
-      }
-    }
-    debugPrint("   ∑ TOPLAM ZAM FARKI: $diff\n");
-    // 🔥🔥🔥 DEBUG BİTİŞ 🔥🔥🔥
+    //   if (isUnpaid && hasPriceHike) {
+    //     final itemDiff =
+    //         (prod.currentPrice - prod.snapshotPrice) * prod.quantity;
+    //     diff += itemDiff;
+    //     debugPrint("      💰 FARK EKLENDİ: +$itemDiff");
+    //   } else {
+    //     debugPrint("      ⛔ FARK EKLENMEDİ (Ya ödendi ya da zam yok)");
+    //   }
+    // }
+    // debugPrint("   ∑ TOPLAM ZAM FARKI: $diff\n");
+    // // 🔥🔥🔥 DEBUG BİTİŞ 🔥🔥🔥
 
     return diff;
   }

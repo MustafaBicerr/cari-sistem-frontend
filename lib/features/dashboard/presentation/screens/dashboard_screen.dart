@@ -6,6 +6,7 @@ import 'package:mobile/features/dashboard/presentation/widgets/charts/hourly_sal
 import 'package:mobile/features/dashboard/presentation/widgets/charts/responsive_chart_carousel.dart';
 import 'package:mobile/features/dashboard/presentation/widgets/charts/summary_pie_chart.dart';
 import 'package:mobile/features/dashboard/presentation/widgets/charts/weekly_sales_bar_chart.dart';
+import 'package:mobile/features/dashboard/presentation/widgets/dialogs/transaction_master_dialog.dart';
 import 'package:mobile/features/dashboard/presentation/widgets/dialogs/turnover_detail_dialog.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../widgets/stat_card.dart';
@@ -80,6 +81,11 @@ class DashboardScreen extends ConsumerWidget {
                         isIncrease: true,
                         onTap: () {
                           print("İş hacmi detayları açılacak...");
+                          showDialog(
+                            context: context,
+                            builder:
+                                (context) => const TransactionMasterDialog(),
+                          );
                         },
                       ),
                       // 1. GÜNLÜK CİRO
