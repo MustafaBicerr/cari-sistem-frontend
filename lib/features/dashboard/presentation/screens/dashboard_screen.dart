@@ -7,22 +7,34 @@ import 'package:mobile/features/dashboard/presentation/widgets/charts/responsive
 import 'package:mobile/features/dashboard/presentation/widgets/charts/summary_pie_chart.dart';
 import 'package:mobile/features/dashboard/presentation/widgets/charts/weekly_sales_bar_chart.dart';
 import 'package:mobile/features/dashboard/presentation/widgets/dialogs/transaction_master_dialog.dart';
-import 'package:mobile/features/dashboard/presentation/widgets/dialogs/turnover_detail_dialog.dart';
+import 'package:mobile/features/dashboard/presentation/widgets/financial_stat_card.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../widgets/stat_card.dart';
 import '../providers/dashboard_provider.dart';
 
-class DashboardScreen extends ConsumerWidget {
+class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+  // 🔥 SCROLL KİLİDİ İÇİN STATE
+  bool _isChartHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
     final dashboardAsyncValue = ref.watch(dashboardSummaryProvider);
     final chartsAsyncValue = ref.watch(dashboardChartsProvider);
-
     final currencyFormat = NumberFormat.currency(locale: 'tr_TR', symbol: '₺');
 
     return SingleChildScrollView(
+      // 🔥 KİLİT MEKANİZMASI: Grafik üzerindeyken sayfa kaymasın
+      physics:
+          _isChartHovered
+              ? const NeverScrollableScrollPhysics()
+              : const ClampingScrollPhysics(),
       padding: const EdgeInsets.all(24.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -42,16 +54,10 @@ class DashboardScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 32),
 
-          // --- KARTLAR BÖLÜMÜ ---
+          // --- KARTLAR ---
           dashboardAsyncValue.when(
             loading: () => const Center(child: CircularProgressIndicator()),
-            error:
-                (err, stack) => Center(
-                  child: Text(
-                    'Veri alınamadı: $err',
-                    style: const TextStyle(color: Colors.red),
-                  ),
-                ),
+            error: (err, stack) => Center(child: Text('Veri alınamadı: $err')),
             data: (data) {
               return LayoutBuilder(
                 builder: (context, constraints) {
@@ -61,8 +67,11 @@ class DashboardScreen extends ConsumerWidget {
                           : (constraints.maxWidth > 700 ? 2 : 1);
                   double childAspectRatio =
                       constraints.maxWidth > 1100
-                          ? 1.4
-                          : (crossAxisCount == 1 ? 1.8 : 1.5);
+                          ? 1.3
+                          : (crossAxisCount == 1 ? 1.6 : 1.4);
+                  double todayTotalVolume =
+                      data.turnover.totalTurnover +
+                      data.debtGiven.totalDebtGiven;
 
                   return GridView.count(
                     crossAxisCount: crossAxisCount,
@@ -72,53 +81,51 @@ class DashboardScreen extends ConsumerWidget {
                     mainAxisSpacing: 20,
                     childAspectRatio: childAspectRatio,
                     children: [
-                      // 3. ENFLASYON KAZANCI
-                      StatCard(
-                        title: "Toplam Satış Miktarı (Bugün)",
-                        value: "₺1035,00",
-                        icon: Icons.trending_up,
-                        color: Colors.green,
-                        isIncrease: true,
-                        onTap: () {
-                          print("İş hacmi detayları açılacak...");
-                          showDialog(
-                            context: context,
-                            builder:
-                                (context) => const TransactionMasterDialog(),
-                          );
-                        },
-                      ),
-                      // 1. GÜNLÜK CİRO
-                      StatCard(
-                        title: "Ciro (Bugün)",
-                        value: currencyFormat.format(
+                      FinancialStatCard(
+                        title: "Günlük Kasa",
+                        mainValue: currencyFormat.format(
                           data.turnover.totalTurnover,
                         ),
+                        subValueLabel: "Toplam İşlem:",
+                        subValue: currencyFormat.format(todayTotalVolume),
                         icon: Icons.payments_outlined,
                         color: Colors.blue,
-                        onTap: () {
-                          print("Ciro detayları açılacak...");
-                          // 🔥 Dialogu burada açıyoruz
-                          showDialog(
-                            context: context,
-                            builder: (context) => const TurnoverDetailDialog(),
-                          );
-                        },
+                        onTap:
+                            () => showDialog(
+                              context: context,
+                              builder:
+                                  (context) => const TransactionMasterDialog(
+                                    viewType: TransactionViewType.dailyTurnover,
+                                  ),
+                            ),
                       ),
-                      // 2. VERİLEN BORÇ
-                      StatCard(
-                        title: "Verilen Borç (Bugün)",
-                        value: currencyFormat.format(
-                          data.debtGiven.totalDebtGiven,
+                      FinancialStatCard(
+                        title: "Genel Alacak",
+                        mainValue: currencyFormat.format(
+                          data.financial.totalReceivable,
                         ),
-                        icon: Icons.credit_score_outlined,
+                        subValueLabel: "Bugün Verilen:",
+                        subValue:
+                            "+${currencyFormat.format(data.debtGiven.totalDebtGiven)}",
+                        icon: Icons.account_balance_wallet_outlined,
                         color: Colors.orange,
-                        onTap: () {
-                          print("Borç detayları açılacak...");
-                        },
+                        isDebtCard: true,
+                        onTap:
+                            () => showDialog(
+                              context: context,
+                              builder:
+                                  (context) => const TransactionMasterDialog(
+                                    viewType: TransactionViewType.totalDebt,
+                                  ),
+                            ),
                       ),
-
-                      // 4. KRİTİK STOK
+                      StatCard(
+                        title: "Bugünkü Randevular",
+                        value: "${data.appointments.todayCount} Hasta",
+                        icon: Icons.calendar_today_outlined,
+                        color: Colors.purple,
+                        onTap: () {},
+                      ),
                       StatCard(
                         title: "Kritik Stok",
                         value: "${data.inventory.criticalCount} Ürün",
@@ -128,30 +135,7 @@ class DashboardScreen extends ConsumerWidget {
                                 ? Colors.red
                                 : Colors.green,
                         isIncrease: false,
-                        onTap: () {
-                          print("Stok detayları açılacak...");
-                        },
-                      ),
-
-                      StatCard(
-                        title: "Toplam Alınacak Tahsilat",
-                        value: "₺3.573,00",
-                        icon: Icons.trending_up,
-                        color: Colors.green,
-                        isIncrease: true,
-                        onTap: () {
-                          print("İş hacmi detayları açılacak...");
-                        },
-                      ),
-                      StatCard(
-                        title: "Toplam Ciro",
-                        value: "₺2.410,00",
-                        icon: Icons.trending_up,
-                        color: Colors.green,
-                        isIncrease: true,
-                        onTap: () {
-                          print("İş hacmi detayları açılacak...");
-                        },
+                        onTap: () {},
                       ),
                     ],
                   );
@@ -160,65 +144,71 @@ class DashboardScreen extends ConsumerWidget {
             },
           ),
 
-          // --- GRAFİKLER BÖLÜMÜ ---
           const SizedBox(height: 32),
 
+          // --- GRAFİKLER ---
           chartsAsyncValue.when(
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (e, s) => const SizedBox(),
             data: (chartData) {
-              // --- VERİ HESAPLAMALARI (Client-Side) ---
-
-              // 1. Grafik İçin: Toplam Satış vs Toplam Kasa (Satış + Tahsilat)
               double totalSales = 0;
               double totalCashFlow = 0;
               for (var h in chartData.hourlyStats) {
                 totalSales += h.totalSalesVolume;
-                // 🔥 YENİ MODEL UYUMU: Toplam Kasa = Satıştan Gelen + Tahsilattan Gelen
                 totalCashFlow += (h.salesCashFlow + h.collectionCashFlow);
               }
-
-              // 2. Grafik İçin: Toplam Nakit vs Toplam Kart
               double totalCash = 0;
               double totalCard = 0;
               for (var p in chartData.paymentStats) {
                 if (p.paymentMethod == 'CASH') totalCash += p.totalAmount;
                 if (p.paymentMethod == 'CREDIT_CARD')
                   totalCard += p.totalAmount;
+                debugPrint(
+                  'Payment Method: ${p.paymentMethod}, Amount: ${p.totalAmount}',
+                );
               }
 
               return Column(
                 children: [
-                  // 1. SATIR: PERFORMANS (Çizgi + Pasta)
+                  // 1. SATIR: PERFORMANS
                   ResponsiveChartCarousel(
                     title: "Satış Performansı",
+                    // 🔥 GÜNCELLENDİ: Hover durumunu dinliyoruz
                     lineChart: HourlySalesChart(
                       hourlyStats: chartData.hourlyStats,
-                    ), // Güncellenmiş 3 çizgili grafik
+                      onHover: (isHovering) {
+                        // Sadece durum değişirse setstate yap (Performans için)
+                        if (_isChartHovered != isHovering) {
+                          setState(() => _isChartHovered = isHovering);
+                        }
+                      },
+                    ),
                     pieChart: SummaryPieChart(
                       value1: totalSales - totalCashFlow,
                       title1: "Borç Verilen",
                       color1: Colors.blue,
                       value2: totalCashFlow,
-                      title2: "Ciro (Peşin Alınan)",
+                      title2: "Ciro (Peşin)",
                       color2: Colors.green,
                     ),
                   ),
-
                   const SizedBox(height: 24),
                   const Divider(),
                   const SizedBox(height: 24),
-
-                  // 2. SATIR: ÖDEME YÖNTEMLERİ (Çizgi + Pasta)
                   ResponsiveChartCarousel(
                     title: "Ödeme Dağılımı",
                     lineChart: HourlyPaymentTrendChart(
                       hourlyStats: chartData.hourlyStats,
+                      onHover: (isHovering) {
+                        if (_isChartHovered != isHovering) {
+                          setState(() => _isChartHovered = isHovering);
+                        }
+                      },
                     ),
                     pieChart: SummaryPieChart(
                       value1: totalCash,
                       title1: "Nakit",
-                      color1: AppColors.accent, // Turuncu
+                      color1: AppColors.accent,
                       value2: totalCard,
                       title2: "Kart",
                       color2: Colors.purple,
@@ -226,14 +216,9 @@ class DashboardScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 24),
                   const Divider(),
-                  const SizedBox(
-                    height: 24,
-                  ), // 3. GRAFİK: HAFTALIK PERFORMANS (BAR CHART)
-                  // Bu grafik tek başına geniş duracağı için Carousel içine koymaya gerek yok,
-                  // doğrudan ekrana basabiliriz.
+                  const SizedBox(height: 24),
                   WeeklySalesBarChart(weeklyStats: chartData.weeklyStats),
-
-                  const SizedBox(height: 50), // En alt boşluk
+                  const SizedBox(height: 50),
                 ],
               );
             },

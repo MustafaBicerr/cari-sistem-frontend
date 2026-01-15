@@ -1,203 +1,511 @@
 import 'package:fl_chart/fl_chart.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:mobile/features/dashboard/data/models/dashboard_chart_model.dart';
 import 'dart:math';
-
 import '../../../../../core/theme/app_colors.dart';
 
-class HourlyPaymentTrendChart extends StatelessWidget {
+class HourlyPaymentTrendChart extends StatefulWidget {
   final List<HourlyStat> hourlyStats;
+  // Scroll Kilidi İçin Callback (DashboardScreen ile konuşur)
+  final Function(bool isHovering)? onHover;
 
-  const HourlyPaymentTrendChart({super.key, required this.hourlyStats});
+  const HourlyPaymentTrendChart({
+    super.key,
+    required this.hourlyStats,
+    this.onHover,
+  });
+
+  @override
+  State<HourlyPaymentTrendChart> createState() =>
+      _HourlyPaymentTrendChartState();
+}
+
+class _HourlyPaymentTrendChartState extends State<HourlyPaymentTrendChart> {
+  // Zoom ve Pan State
+  double _minX = 0;
+  double _maxX = 24;
+  late double _initialMinX;
+  late double _initialMaxX;
+  bool _isInit = false;
+
+  final double _leftTitleReservedSize = 40;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_isInit) {
+      _calculateInitialView();
+      _isInit = true;
+    }
+  }
+
+  // "HH:MM" -> Double (09:30 -> 9.5)
+  double _timeToDouble(String time) {
+    if (!time.contains(':')) return 0.0;
+    final parts = time.split(':');
+    final hour = double.parse(parts[0]);
+    final minute = double.parse(parts[1]);
+    return hour + (minute / 60.0);
+  }
+
+  // Double -> "HH:MM"
+  String _formatTime(double value) {
+    if (value >= 24) return "00:00";
+    if (value < 0) return "00:00";
+    int totalMinutes = (value * 60).round();
+    int hour = totalMinutes ~/ 60;
+    int minute = totalMinutes % 60;
+    return "${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}";
+  }
+
+  // Başlangıç Odaklanması
+  void _calculateInitialView() {
+    if (widget.hourlyStats.isEmpty) {
+      _minX = 0;
+      _maxX = 24;
+      return;
+    }
+
+    double firstActiveTime = 0;
+    double lastActiveTime = 24;
+    bool found = false;
+
+    // Nakit veya Kart işlemi olan saatleri bul
+    for (var stat in widget.hourlyStats) {
+      if ((stat.hourlyCash + stat.hourlyCard) > 0) {
+        final timeVal = _timeToDouble(stat.hourLabel);
+        if (!found) {
+          firstActiveTime = timeVal;
+          found = true;
+        }
+        lastActiveTime = timeVal;
+      }
+    }
+
+    if (!found) {
+      _minX = 8;
+      _maxX = 18;
+    } else {
+      _minX = max(0, firstActiveTime - 1);
+      _maxX = min(24, lastActiveTime + 1);
+
+      if ((_maxX - _minX) < 4) {
+        double center = (_minX + _maxX) / 2;
+        _minX = max(0, center - 2);
+        _maxX = min(24, center + 2);
+      }
+    }
+    _initialMinX = _minX;
+    _initialMaxX = _maxX;
+  }
+
+  // Zoom Mantığı
+  void _zoom(double scale, {double? focalPoint}) {
+    setState(() {
+      final currentRange = _maxX - _minX;
+      final newRange = currentRange * scale;
+      final anchor = focalPoint ?? (_minX + _maxX) / 2;
+      final ratio = (anchor - _minX) / currentRange;
+
+      double newMinX = anchor - (newRange * ratio);
+      double newMaxX = newMinX + newRange;
+
+      if (newMinX < 0) {
+        newMinX = 0;
+        newMaxX = newRange;
+      }
+      if (newMaxX > 24) {
+        newMaxX = 24;
+        newMinX = 24 - newRange;
+      }
+
+      if (newMaxX - newMinX < 0.5) return; // Max zoom sınırı
+
+      _minX = max(0, newMinX);
+      _maxX = min(24, newMaxX);
+    });
+  }
+
+  // Pan Mantığı
+  void _pan(double delta, double chartWidth) {
+    setState(() {
+      double pixelToX = (_maxX - _minX) / chartWidth;
+      double shift = delta * pixelToX;
+      if (_minX - shift >= 0 && _maxX - shift <= 24) {
+        _minX -= shift;
+        _maxX -= shift;
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    if (hourlyStats.isEmpty) return const Center(child: Text("Veri yok"));
+    if (widget.hourlyStats.isEmpty)
+      return const Center(child: Text("Veri yok"));
 
-    // Max Y değerini bul
     double maxY = 0;
-    for (var stat in hourlyStats) {
+    for (var stat in widget.hourlyStats) {
       maxY = max(maxY, stat.hourlyCash);
       maxY = max(maxY, stat.hourlyCard);
     }
     maxY = maxY == 0 ? 100 : maxY * 1.2;
 
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey.withOpacity(0.1)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Başlık
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                "Ödeme Akışı",
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
+    // X Ekseni Aralığı
+    double visibleRange = _maxX - _minX;
+    double xInterval;
+    if (visibleRange > 12)
+      xInterval = 4.0;
+    else if (visibleRange > 6)
+      xInterval = 2.0;
+    else if (visibleRange > 3)
+      xInterval = 1.0;
+    else if (visibleRange > 1.5)
+      xInterval = 0.5;
+    else if (visibleRange > 0.8)
+      xInterval = 0.25;
+    else
+      xInterval = 0.166666;
+
+    return MouseRegion(
+      // Scroll Kilidini Tetikle
+      onEnter: (_) => widget.onHover?.call(true),
+      onExit: (_) => widget.onHover?.call(false),
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.grey.withOpacity(0.1)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 20,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            // HEADER
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Ödeme Akışı",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    Text(
+                      "Nakit vs Kart Dağılımı",
+                      style: TextStyle(fontSize: 10, color: Colors.grey),
+                    ),
+                  ],
                 ),
-              ),
-              // Legend
-              Row(
+                Row(
+                  children: [
+                    _ZoomButton(
+                      icon: Icons.refresh,
+                      onTap:
+                          () => setState(() {
+                            _minX = _initialMinX;
+                            _maxX = _initialMaxX;
+                          }),
+                    ),
+                    const SizedBox(width: 4),
+                    _ZoomButton(icon: Icons.remove, onTap: () => _zoom(1.2)),
+                    const SizedBox(width: 4),
+                    _ZoomButton(icon: Icons.add, onTap: () => _zoom(0.8)),
+                  ],
+                ),
+              ],
+            ),
+
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Wrap(
+                spacing: 12,
                 children: [
                   _buildLegendItem(AppColors.accent, "Nakit"),
-                  const SizedBox(width: 12),
                   _buildLegendItem(Colors.purple, "Kart"),
                 ],
               ),
-            ],
-          ),
-          const SizedBox(height: 32),
+            ),
 
-          // Grafik
-          Expanded(
-            // aspectRatio: 1.70,
-            child: LineChart(
-              LineChartData(
-                minY: 0,
-                maxY: maxY,
-                gridData: FlGridData(
-                  show: true,
-                  drawVerticalLine: false,
-                  horizontalInterval: maxY / 5,
-                  getDrawingHorizontalLine:
-                      (value) => FlLine(
-                        color: Colors.grey.withOpacity(0.1),
-                        strokeWidth: 1,
-                      ),
-                ),
-                titlesData: FlTitlesData(
-                  show: true,
-                  rightTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  topTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 30,
-                      interval: 4,
-                      getTitlesWidget: (value, meta) {
-                        final index = value.toInt();
-                        if (index >= 0 && index < hourlyStats.length) {
-                          return Padding(
-                            padding: const EdgeInsets.only(top: 8.0),
-                            child: Text(
-                              hourlyStats[index].hourLabel.split(':')[0],
-                              style: const TextStyle(
-                                color: AppColors.textSecondary,
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
+            // GRAFİK
+            Expanded(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  return Listener(
+                    onPointerSignal: (event) {
+                      if (event is PointerScrollEvent) {
+                        double localX = event.localPosition.dx;
+                        double chartAreaX = max(
+                          0,
+                          localX - _leftTitleReservedSize,
+                        );
+                        double chartAreaWidth =
+                            constraints.maxWidth - _leftTitleReservedSize;
+                        double ratio = chartAreaX / chartAreaWidth;
+                        double focusHour = _minX + (ratio * (_maxX - _minX));
+
+                        if (event.scrollDelta.dy > 0)
+                          _zoom(1.1, focalPoint: focusHour);
+                        else
+                          _zoom(0.9, focalPoint: focusHour);
+                      }
+                    },
+                    child: GestureDetector(
+                      onHorizontalDragUpdate:
+                          (details) =>
+                              _pan(details.primaryDelta!, constraints.maxWidth),
+                      child: LineChart(
+                        LineChartData(
+                          minX: _minX,
+                          maxX: _maxX,
+                          minY: 0,
+                          maxY: maxY,
+                          clipData: const FlClipData.all(),
+                          gridData: FlGridData(
+                            show: true,
+                            horizontalInterval: maxY / 4,
+                            verticalInterval: xInterval,
+                            getDrawingHorizontalLine:
+                                (v) => FlLine(
+                                  color: Colors.grey.withOpacity(0.1),
+                                  strokeWidth: 1,
+                                ),
+                            getDrawingVerticalLine:
+                                (v) => FlLine(
+                                  color: Colors.grey.withOpacity(0.05),
+                                  strokeWidth: 1,
+                                ),
+                          ),
+                          titlesData: FlTitlesData(
+                            show: true,
+                            rightTitles: const AxisTitles(
+                              sideTitles: SideTitles(showTitles: false),
+                            ),
+                            topTitles: const AxisTitles(
+                              sideTitles: SideTitles(showTitles: false),
+                            ),
+                            bottomTitles: AxisTitles(
+                              sideTitles: SideTitles(
+                                showTitles: true,
+                                reservedSize: 32,
+                                interval: xInterval,
+                                getTitlesWidget: (value, meta) {
+                                  final isMainHour = (value % 1).abs() < 0.01;
+                                  return Padding(
+                                    padding: const EdgeInsets.only(top: 8.0),
+                                    child: Text(
+                                      _formatTime(value),
+                                      style: TextStyle(
+                                        color:
+                                            isMainHour
+                                                ? AppColors.textPrimary
+                                                : AppColors.textSecondary,
+                                        fontSize: isMainHour ? 11 : 9,
+                                        fontWeight:
+                                            isMainHour
+                                                ? FontWeight.bold
+                                                : FontWeight.normal,
+                                      ),
+                                    ),
+                                  );
+                                },
                               ),
                             ),
-                          );
-                        }
-                        return const Text('');
-                      },
-                    ),
-                  ),
-                  leftTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: false,
-                    ), // Soldaki sayıları gizledim (daha sade)
-                  ),
-                ),
-                borderData: FlBorderData(show: false),
-
-                lineTouchData: LineTouchData(
-                  touchTooltipData: LineTouchTooltipData(
-                    getTooltipColor: (touchedSpot) => Colors.blueGrey.shade900,
-                    getTooltipItems: (List<LineBarSpot> touchedBarSpots) {
-                      return touchedBarSpots.map((barSpot) {
-                        final isCash = barSpot.barIndex == 0;
-                        final color =
-                            isCash
-                                ? AppColors.accent.withOpacity(0.8)
-                                : Colors.purple.withOpacity(0.8);
-                        final label = isCash ? "Nakit:" : "Kart:";
-
-                        return LineTooltipItem(
-                          "$label ₺${NumberFormat('#,##0').format(barSpot.y)} \n",
-                          TextStyle(
-                            color: color,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
+                            leftTitles: AxisTitles(
+                              sideTitles: SideTitles(
+                                showTitles: true,
+                                reservedSize: _leftTitleReservedSize,
+                                getTitlesWidget: (value, meta) {
+                                  if (value == 0) return const Text('');
+                                  if (value >= 1000)
+                                    return Text(
+                                      '${(value / 1000).toStringAsFixed(1)}k',
+                                      style: const TextStyle(
+                                        fontSize: 10,
+                                        color: AppColors.textSecondary,
+                                      ),
+                                    );
+                                  return Text(
+                                    value.toInt().toString(),
+                                    style: const TextStyle(
+                                      fontSize: 10,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
                           ),
-                        );
-                      }).toList();
-                    },
-                  ),
-                ),
+                          borderData: FlBorderData(show: false),
 
-                lineBarsData: [
-                  // 1. Çizgi: NAKİT (Turuncu)
-                  LineChartBarData(
-                    spots:
-                        hourlyStats.asMap().entries.map((e) {
-                          return FlSpot(e.key.toDouble(), e.value.hourlyCash);
-                        }).toList(),
-                    isCurved: true,
-                    color: AppColors.accent,
-                    barWidth: 3,
-                    isStrokeCapRound: true,
-                    dotData: const FlDotData(show: false),
-                  ),
-                  // 2. Çizgi: KART (Mor)
-                  LineChartBarData(
-                    spots:
-                        hourlyStats.asMap().entries.map((e) {
-                          return FlSpot(e.key.toDouble(), e.value.hourlyCard);
-                        }).toList(),
-                    isCurved: true,
-                    color: Colors.purple,
-                    barWidth: 3,
-                    isStrokeCapRound: true,
-                    dotData: const FlDotData(show: false),
-                  ),
-                ],
+                          // TOOLTIP
+                          lineTouchData: LineTouchData(
+                            touchTooltipData: LineTouchTooltipData(
+                              getTooltipColor:
+                                  (_) => Colors.blueGrey.shade900.withOpacity(
+                                    0.95,
+                                  ),
+                              fitInsideHorizontally: true,
+                              getTooltipItems: (spots) {
+                                if (spots.isEmpty) return [];
+                                final timeStr = _formatTime(spots.first.x);
+                                return spots.map((spot) {
+                                  final isFirst = spot == spots.first;
+                                  Color color =
+                                      spot.barIndex == 0
+                                          ? AppColors.accent
+                                          : Colors.purple;
+                                  String label =
+                                      spot.barIndex == 0 ? "Nakit" : "Kart";
+
+                                  if (isFirst) {
+                                    return LineTooltipItem(
+                                      "$timeStr\n",
+                                      const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        height: 1.5,
+                                      ),
+                                      children: [
+                                        TextSpan(
+                                          text:
+                                              "$label: ₺${NumberFormat('#,##0').format(spot.y)}",
+                                          style: TextStyle(
+                                            color: color,
+                                            fontSize: 11,
+                                          ),
+                                        ),
+                                      ],
+                                    );
+                                  } else {
+                                    return LineTooltipItem(
+                                      "$label: ₺${NumberFormat('#,##0').format(spot.y)}",
+                                      TextStyle(color: color, fontSize: 11),
+                                    );
+                                  }
+                                }).toList();
+                              },
+                            ),
+                            handleBuiltInTouches: true,
+                          ),
+
+                          lineBarsData: [
+                            // 1. NAKİT (Turuncu)
+                            _buildLine(
+                              widget.hourlyStats
+                                  .map(
+                                    (e) => FlSpot(
+                                      _timeToDouble(e.hourLabel),
+                                      e.hourlyCash,
+                                    ),
+                                  )
+                                  .toList(),
+                              AppColors.accent,
+                              true,
+                            ),
+                            // 2. KART (Mor)
+                            _buildLine(
+                              widget.hourlyStats
+                                  .map(
+                                    (e) => FlSpot(
+                                      _timeToDouble(e.hourLabel),
+                                      e.hourlyCard,
+                                    ),
+                                  )
+                                  .toList(),
+                              Colors.purple,
+                              false, // İçi boş olsun (daha net görünür)
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
-          ),
-        ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  LineChartBarData _buildLine(List<FlSpot> spots, Color color, bool filled) {
+    return LineChartBarData(
+      spots: spots,
+      isCurved: true,
+      curveSmoothness: 0.2,
+      color: color,
+      barWidth: 3,
+      isStrokeCapRound: true,
+      dotData: const FlDotData(show: false),
+      belowBarData: BarAreaData(
+        show: filled,
+        gradient:
+            filled
+                ? LinearGradient(
+                  colors: [color.withOpacity(0.2), Colors.transparent],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                )
+                : null,
       ),
     );
   }
 
   Widget _buildLegendItem(Color color, String label) {
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 8,
-          height: 8,
+          width: 10,
+          height: 10,
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
-        const SizedBox(width: 4),
+        const SizedBox(width: 6),
         Text(
           label,
           style: const TextStyle(
             color: AppColors.textSecondary,
-            fontSize: 12,
-            fontWeight: FontWeight.bold,
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ],
+    );
+  }
+}
+
+class _ZoomButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+  const _ZoomButton({required this.icon, required this.onTap});
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          color: Colors.grey[100],
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey[300]!),
+        ),
+        child: Icon(icon, size: 18, color: Colors.grey[700]),
+      ),
     );
   }
 }

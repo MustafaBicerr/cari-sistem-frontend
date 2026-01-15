@@ -142,8 +142,8 @@ class SaleSummaryPanel extends StatelessWidget {
               _PaymentTypeButton(
                 label: "Kredi Kartı",
                 icon: Icons.credit_card,
-                isSelected: selectedPaymentMethod == 'CARD',
-                onTap: () => onPaymentMethodChanged('CARD'),
+                isSelected: selectedPaymentMethod == 'CREDIT_CARD',
+                onTap: () => onPaymentMethodChanged('CREDIT_CARD'),
               ),
               const SizedBox(width: 12),
               _PaymentTypeButton(

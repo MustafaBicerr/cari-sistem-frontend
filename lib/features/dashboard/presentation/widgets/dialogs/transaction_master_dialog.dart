@@ -7,14 +7,86 @@ import '../../../../../core/theme/app_colors.dart';
 import '../../providers/dashboard_provider.dart';
 import '../../providers/transaction_filter_provider.dart'; // Filtre Provider'ı ekledik
 
-class TransactionMasterDialog extends ConsumerWidget {
-  const TransactionMasterDialog({super.key});
+// 🔥 AÇILIŞ SENARYOLARI (VIEW TYPES)
+enum TransactionViewType {
+  none, // Standart (Filtresiz)
+  dailyTurnover, // Günlük Ciro (Sadece Ödenenler + Bugün)
+  totalDebt, // Toplam Alacak (Sadece Borçlular + Azalan Sıralama)
+}
+
+class TransactionMasterDialog extends ConsumerStatefulWidget {
+  final TransactionViewType viewType; // Hangi modda açılacak?
+
+  const TransactionMasterDialog({
+    super.key,
+    this.viewType = TransactionViewType.none, // Varsayılan boş
+  });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    // Ham verinin yüklenme durumunu kontrol etmek için (Loading/Error göstermek için)
-    final masterAsync = ref.watch(transactionMasterProvider(null));
-    // Filtrelenmiş veriyi almak için
+  ConsumerState<TransactionMasterDialog> createState() =>
+      _TransactionMasterDialogState();
+}
+
+class _TransactionMasterDialogState
+    extends ConsumerState<TransactionMasterDialog> {
+  @override
+  void initState() {
+    super.initState();
+    // Widget çizildikten hemen sonra filtreleri ayarla
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _applyInitialFilters();
+    });
+  }
+
+  void _applyInitialFilters() {
+    final notifier = ref.read(transactionFilterProvider.notifier);
+
+    // Önce her şeyi temizle
+    notifier.clearFilters();
+
+    switch (widget.viewType) {
+      case TransactionViewType.dailyTurnover:
+        // SENARYO 1: GÜNLÜK CİRO
+        // Sadece 'PAID' ve 'PARTIAL' olanları getir (Kasaya para girenler)
+        // Sıralama: En yeni en üstte
+        notifier.toggleStatus('PAID');
+        notifier.toggleStatus('PARTIAL');
+        // Not: Backend zaten 'date' parametresi ile bugünü getirecek,
+        // client-side filtrede ayrıca tarih süzmeye gerek yok.
+        break;
+
+      case TransactionViewType.totalDebt:
+        // SENARYO 2: GENEL ALACAK (BORÇLAR)
+        // Sadece 'UNPAID' ve 'PARTIAL' (Kalan borcu olanlar)
+        // Sıralama: En büyük borç en üstte
+        notifier.toggleStatus('UNPAID');
+        notifier.toggleStatus('PARTIAL');
+        notifier.setSortOption('debt_desc'); // Borca göre azalan
+        notifier.setAmountFilterType(
+          'DEBT',
+        ); // Tutar gösterimi borç odaklı olsun
+        break;
+
+      case TransactionViewType.none:
+      default:
+        // Hiçbir şey yapma, tertemiz liste.
+        break;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Backend'e "Hangi Tarih?" sorusu
+    // Eğer Ciro modundaysak BUGÜNÜ gönder, Borç modundaysak TÜM ZAMANI (null) gönder.
+    // Çünkü borç 3 ay öncesinden de kalmış olabilir.
+    String? dateParam;
+    if (widget.viewType == TransactionViewType.dailyTurnover) {
+      dateParam = DateTime.now().toIso8601String().split('T')[0];
+    } else {
+      dateParam = null; // Tüm zamanlar
+    }
+
+    final masterAsync = ref.watch(transactionMasterProvider(dateParam));
     final filteredTransactions = ref.watch(filteredTransactionsProvider);
 
     final size = MediaQuery.of(context).size;
@@ -30,14 +102,12 @@ class TransactionMasterDialog extends ConsumerWidget {
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            // --- HEADER: BAŞLIK, SEARCH VE AKSİYON BUTONLARI ---
+            // --- HEADER ---
             _buildHeaderSection(context, ref, isMobile),
-
             const SizedBox(height: 16),
 
-            // --- FİLTRE CHIPLERİ (HIZLI FİLTRELER) ---
+            // --- FİLTRE CHIPLERİ ---
             _buildQuickFilters(ref),
-
             const Divider(height: 24),
 
             // --- LİSTE ---
@@ -47,7 +117,7 @@ class TransactionMasterDialog extends ConsumerWidget {
                 error:
                     (e, s) => Center(
                       child: Text(
-                        "Veri hatası: $e",
+                        "Hata: $e",
                         style: const TextStyle(color: Colors.red),
                       ),
                     ),
@@ -58,7 +128,7 @@ class TransactionMasterDialog extends ConsumerWidget {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(
-                            Icons.search_off,
+                            Icons.filter_list_off,
                             size: 48,
                             color: Colors.grey[300],
                           ),
@@ -85,7 +155,7 @@ class TransactionMasterDialog extends ConsumerWidget {
               ),
             ),
 
-            // --- FOOTER ÖZET (Opsiyonel) ---
+            // --- FOOTER ---
             if (filteredTransactions.isNotEmpty)
               _buildFooterSummary(filteredTransactions),
           ],
@@ -242,8 +312,8 @@ class TransactionMasterDialog extends ConsumerWidget {
           const SizedBox(width: 8),
           _buildFilterChip(
             "Kart",
-            state.selectedPaymentMethods.contains('CARD'),
-            () => notifier.toggleMethod('CARD'),
+            state.selectedPaymentMethods.contains('CREDIT_CARD'),
+            () => notifier.toggleMethod('CREDIT_CARD'),
             Colors.purple,
           ),
         ],

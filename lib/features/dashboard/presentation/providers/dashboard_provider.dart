@@ -27,67 +27,18 @@ final dashboardChartsProvider = FutureProvider.autoDispose<DashboardChartModel>(
   },
 );
 
-// 3. Ciro Detayları Provider'ı (SADECE DIALOG İÇİN)
-// Bu provider dashboard açılınca çalışmaz, sadece dialog açılınca çalışır.
-final turnoverDialogProvider = FutureProvider.autoDispose.family<
-  List<TurnoverDetailModel>,
-  String?
->((ref, date) async {
-  final apiClient = ref.read(apiClientProvider);
+// 3. Ciro Detayları Provider'ı (Legacy - Eski Dialog)
+final turnoverDialogProvider = FutureProvider.autoDispose
+    .family<List<TurnoverDetailModel>, String?>((ref, date) async {
+      // 🧹 ARTIK TERTEMİZ: Sadece Repository çağırıyoruz
+      final repo = ref.read(dashboardRepositoryProvider);
+      return repo.getTurnoverDialogDetails(date);
+    });
 
-  try {
-    // 🔥 YENİ VE AYRI ENDPOINT'E GİDİYORUZ
-    final path =
-        date != null
-            ? '/dashboard/turnover-dialog-details?date=$date'
-            : '/dashboard/turnover-dialog-details';
-
-    final response = await apiClient.dio.get(path);
-
-    if (response.statusCode == 200) {
-      // // 🔥🔥🔥 DEBUG 1: GELEN HAM JSON 🔥🔥🔥
-      // debugPrint("\n🔵 FLUTTER - HAM JSON VERİSİ GELDİ:");
-      // // Tüm veriyi basmak konsolu kilitler, o yüzden sadece ilk elemanın items kısmını basalım
-      // if ((response.data as List).isNotEmpty) {
-      //   final firstItem = (response.data as List)[0];
-      //   debugPrint("Örnek İlk Fiş Items: ${firstItem['items']}");
-      // }
-
-      return (response.data as List)
-          .map((e) => TurnoverDetailModel.fromJson(e))
-          .toList();
-    } else {
-      throw Exception('Detaylar alınamadı');
-    }
-  } catch (e) {
-    debugPrint("HATA: $e"); // Hatayı da görelim
-    throw Exception('Bağlantı hatası: $e');
-  }
-});
-
-// 🔥 YENİ MASTER PROVIDER (Transaction Explorer)
-// date parametresi ile çalışır, verilmezse tümünü veya bugünü çeker (Backend mantığına göre)
+// 4. 🔥 YENİ MASTER PROVIDER (Transaction Explorer)
 final transactionMasterProvider = FutureProvider.autoDispose
     .family<List<TransactionMasterModel>, String?>((ref, date) async {
-      final apiClient = ref.read(apiClientProvider);
-
-      try {
-        // Yeni Endpoint
-        final path =
-            date != null
-                ? '/dashboard/transaction-master?date=$date'
-                : '/dashboard/transaction-master';
-
-        final response = await apiClient.dio.get(path);
-
-        if (response.statusCode == 200) {
-          return (response.data as List)
-              .map((e) => TransactionMasterModel.fromJson(e))
-              .toList();
-        } else {
-          throw Exception('Master verisi alınamadı');
-        }
-      } catch (e) {
-        throw Exception('Bağlantı hatası: $e');
-      }
+      // 🧹 ARTIK TERTEMİZ: Logic Repository'de
+      final repo = ref.read(dashboardRepositoryProvider);
+      return repo.getTransactionMasterDetails(date);
     });
