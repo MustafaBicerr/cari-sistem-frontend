@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:mobile/features/current_accounts/presentation/screens/current_accounts_screen.dart';
+import 'package:mobile/features/current_accounts/presentation/screens/customer_detail_screen.dart';
+import 'package:mobile/features/current_accounts/presentation/screens/supplier_detail_screen.dart';
 import 'package:mobile/features/dashboard/presentation/screens/dashboard_screen.dart';
 import 'package:mobile/features/products/presentation/screens/product_list_screen.dart';
 import 'package:mobile/shared/layouts/main_layout.dart';
@@ -125,7 +128,7 @@ class AppRouter {
               ),
               GoRoute(
                 path: 'suppliers',
-                builder: (context, state) => const SupplierListScreen(),
+                builder: (context, state) => const CurrentAccountsScreen(),
               ),
             ],
           ),
@@ -136,6 +139,28 @@ class AppRouter {
             builder: (context, state) => const SettingsScreen(),
           ),
         ],
+      ),
+
+      // 👇 YENİ EKLENECEK ROTALAR 👇
+
+      // 1. Tedarikçi Detay Rotası
+      // :id kısmı dinamik parametredir.
+      GoRoute(
+        path: '/supplier-detail/:id',
+        builder: (context, state) {
+          // URL'den ID'yi alıyoruz (String olarak gelir, int'e çeviriyoruz)
+          final id = state.pathParameters['id']!;
+          return SupplierDetailScreen(supplierId: id);
+        },
+      ),
+
+      // 2. Müşteri Detay Rotası
+      GoRoute(
+        path: '/customer-detail/:id',
+        builder: (context, state) {
+          final id = state.pathParameters['id']!;
+          return CustomerDetailScreen(customerId: id);
+        },
       ),
     ],
   );
