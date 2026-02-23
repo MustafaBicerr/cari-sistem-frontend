@@ -4,7 +4,9 @@ class TransactionMasterModel {
   final String timeStr;
   final String description;
   final String paymentMethod;
-  final String transactionStatus; // 'PAID', 'UNPAID', 'PARTIAL'
+  final String transactionStatus; // 'PAID', 'UNPAID', 'PARTIAL',
+  final double collectedCash; // O işlemden kasaya giren NAKİT
+  final double collectedCard; // O işlemden hesaba giren KART
 
   // Para Hesapları
   final double totalAmount; // İndirimsiz
@@ -37,6 +39,8 @@ class TransactionMasterModel {
     required this.customerPhone,
     required this.cashierName,
     required this.items,
+    required this.collectedCash,
+    required this.collectedCard,
   });
 
   factory TransactionMasterModel.fromJson(Map<String, dynamic> json) {
@@ -47,6 +51,8 @@ class TransactionMasterModel {
       description: json['description']?.toString() ?? '',
       paymentMethod: json['payment_method']?.toString() ?? 'UNKNOWN',
       transactionStatus: json['transaction_status']?.toString() ?? 'UNKNOWN',
+      collectedCash: _safeDouble(json['collected_cash']),
+      collectedCard: _safeDouble(json['collected_card']),
 
       // Güvenli Double Çevirimi
       totalAmount: _safeDouble(json['total_amount']),

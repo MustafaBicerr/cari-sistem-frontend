@@ -4,15 +4,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
-import 'package:mobile/core/constants/api_constants.dart';
-import 'package:mobile/core/theme/app_colors.dart';
-import 'package:mobile/core/utils/text_utils.dart';
-import 'package:mobile/core/widgets/dialogs/confirmation_dialog.dart';
-import 'package:mobile/core/widgets/dialogs/discard_changes_dialog.dart';
-import 'package:mobile/core/widgets/dialogs/info_dialog.dart';
-import 'package:mobile/core/widgets/dialogs/warning_dialog.dart';
-import 'package:mobile/features/products/domain/models/product.dart';
-import 'package:mobile/features/products/presentation/providers/product_controller.dart';
+import '../../../../core/constants/api_constants.dart';
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/text_utils.dart';
+import '../../../../core/widgets/dialogs/confirmation_dialog.dart';
+import '../../../../core/widgets/dialogs/discard_changes_dialog.dart';
+import '../../../../core/widgets/dialogs/info_dialog.dart';
+import '../../../../core/widgets/dialogs/warning_dialog.dart';
+import '../../domain/models/product.dart';
+import '../providers/product_controller.dart';
 import 'tabs/product_details_tab.dart';
 
 class ProductFormDialog extends ConsumerStatefulWidget {
@@ -53,14 +53,12 @@ class _ProductFormDialogState extends ConsumerState<ProductFormDialog>
   String? _normalizedName;
   XFile? _selectedImage;
   String? _networkImageUrl;
-  String?
-  _selectedRelativePath; // YENİ: Backend'e göndermek için (Relative Path)
+  String? _selectedRelativePath;
   String _selectedUnit = 'PIECE';
   DateTime? _selectedDate;
   bool _showAdvancedSettings = false;
   late Future<List<dynamic>> _stockHistoryFuture;
 
-  // Değişiklik Takibi İçin Orijinal Değerler
   Map<String, dynamic> _originalValues = {};
 
   final List<Map<String, String>> _unitTypes = [
@@ -85,8 +83,10 @@ class _ProductFormDialogState extends ConsumerState<ProductFormDialog>
   void _initAddMode() {
     _barcodeCtrl.text = widget.initialBarcode ?? '';
     _criticalStockCtrl.text = "10";
+    _buyPriceCtrl.text = "0.0"; // Başlangıç 0
+    _stockCtrl.text = "0"; // Başlangıç 0
     _stockHistoryFuture = Future.value([]);
-    _captureOriginalValues(); // Boş değerleri kaydet
+    _captureOriginalValues();
   }
 
   void _initEditMode(Product p) {
@@ -106,10 +106,12 @@ class _ProductFormDialogState extends ConsumerState<ProductFormDialog>
     _groupCtrl.text = details['Grup'] ?? '';
     _firmCtrl.text = details['Firma'] ?? '';
     _shapeCtrl.text = details['Şekil'] ?? '';
-    if (details['Hayvan'] is List)
+    if (details['Hayvan'] is List) {
       _animalCtrl.text = (details['Hayvan'] as List).join(', ');
-    if (details['Etken Madde'] is List)
+    }
+    if (details['Etken Madde'] is List) {
       _ingredientCtrl.text = (details['Etken Madde'] as List).join(', ');
+    }
 
     _stockHistoryFuture = ref
         .read(productControllerProvider)
@@ -118,33 +120,25 @@ class _ProductFormDialogState extends ConsumerState<ProductFormDialog>
     _captureOriginalValues();
   }
 
-  // Orijinal değerleri kopyala (Değişiklik kontrolü için)
   void _captureOriginalValues() {
     _originalValues = {
       'name': _nameCtrl.text,
       'barcode': _barcodeCtrl.text,
-      'buy': _buyPriceCtrl.text,
       'sell': _sellPriceCtrl.text,
-      'stock': _stockCtrl.text,
       'critical': _criticalStockCtrl.text,
       'vat': _vatRateCtrl.text,
       'unit': _selectedUnit,
       'notes': _notesCtrl.text,
       'group': _groupCtrl.text,
       'image_url': _networkImageUrl,
-      'selected_image_path': null, // Başlangıçta yeni seçilen resim yok
     };
   }
 
-  // Değişiklik var mı kontrolü
   bool _hasChanges() {
-    if (_selectedImage != null)
-      return true; // Yeni resim seçildiyse kesin değişti
-    if (_networkImageUrl != _originalValues['image_url'])
-      return true; // Autocomplete ile resim değiştiyse
+    if (_selectedImage != null) return true;
+    if (_networkImageUrl != _originalValues['image_url']) return true;
 
     return _nameCtrl.text != _originalValues['name'] ||
-        _buyPriceCtrl.text != _originalValues['buy'] ||
         _sellPriceCtrl.text != _originalValues['sell'] ||
         _criticalStockCtrl.text != _originalValues['critical'] ||
         _vatRateCtrl.text != _originalValues['vat'] ||
@@ -156,8 +150,6 @@ class _ProductFormDialogState extends ConsumerState<ProductFormDialog>
   List<String> _getChangedFields() {
     List<String> changes = [];
     if (_nameCtrl.text != _originalValues['name']) changes.add("Ürün Adı");
-    if (_buyPriceCtrl.text != _originalValues['buy'])
-      changes.add("Alış Fiyatı");
     if (_sellPriceCtrl.text != _originalValues['sell'])
       changes.add("Satış Fiyatı");
     if (_selectedImage != null ||
@@ -208,20 +200,18 @@ class _ProductFormDialogState extends ConsumerState<ProductFormDialog>
   }
 
   // --- BUTON AKSİYONLARI ---
-
-  void _handleCancel() {
+  void _handleCancel() async {
     if (_hasChanges()) {
-      showDialog(
-        context: context,
-        builder:
-            (context) => DiscardChangesDialog(
-              onDiscard: () {
-                // İki kere pop: biri dialog, biri form
-                Navigator.pop(context);
-              },
-            ),
-      );
+      // 1. Dialog açılır ve kullanıcının seçimi beklenir (true/false)
+      // Dialog kendi kendini kapatma işini kendi içinde halleder.
+      final shouldClose = await DiscardChangesDialog.show(context);
+
+      // 2. Kullanıcı "Evet, Sil" dediyse (true) ve widget hala ekrandaysa
+      if (shouldClose && mounted) {
+        Navigator.pop(context); // Sadece arkadaki Ürün Formunu kapat
+      }
     } else {
+      // Değişiklik yoksa direkt formu kapat
       Navigator.pop(context);
     }
   }
@@ -247,7 +237,7 @@ class _ProductFormDialogState extends ConsumerState<ProductFormDialog>
         .deleteProduct(
           id: widget.product!.id,
           onSuccess: () {
-            Navigator.pop(context);
+            Navigator.pop(context); // Formu kapat
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content: Text("Ürün silindi"),
@@ -264,7 +254,6 @@ class _ProductFormDialogState extends ConsumerState<ProductFormDialog>
     final isEditing = widget.product != null;
 
     if (isEditing) {
-      // DÜZENLEME MODU: Değişiklik onayı sor
       final changes = _getChangedFields();
       if (changes.isEmpty) {
         ScaffoldMessenger.of(
@@ -283,7 +272,6 @@ class _ProductFormDialogState extends ConsumerState<ProductFormDialog>
             ),
       );
     } else {
-      // EKLEME MODU: Direkt kaydet
       _saveProduct();
     }
   }
@@ -295,62 +283,68 @@ class _ProductFormDialogState extends ConsumerState<ProductFormDialog>
 
     final localDetails = {
       "details": {
-        "Grup": _groupCtrl.text,
-        "Firma": _firmCtrl.text,
-        "Şekil": _shapeCtrl.text,
-        "Hayvan": _animalCtrl.text.split(',').map((e) => e.trim()).toList(),
+        "Grup": _groupCtrl.text.trim(),
+        "Firma": _firmCtrl.text.trim(),
+        "Şekil": _shapeCtrl.text.trim(),
+        "Hayvan":
+            _animalCtrl.text
+                .split(',')
+                .map((e) => e.trim())
+                .where((e) => e.isNotEmpty)
+                .toList(),
         "Etken Madde":
-            _ingredientCtrl.text.split(',').map((e) => e.trim()).toList(),
+            _ingredientCtrl.text
+                .split(',')
+                .map((e) => e.trim())
+                .where((e) => e.isNotEmpty)
+                .toList(),
       },
-      "user_notes_on_product": _notesCtrl.text,
+      "user_notes_on_product": _notesCtrl.text.trim(),
     };
 
     try {
       if (isEditing) {
+        // 🔥 GÜNCELLEME MODU
         await controller.updateProduct(
           id: widget.product!.id,
           updates: {
-            "name": _nameCtrl.text,
-            "normalized_name": _normalizedName ?? normalizeText(_nameCtrl.text),
-            "buying_price": double.tryParse(_buyPriceCtrl.text) ?? 0,
+            "name": _nameCtrl.text.trim(),
+            "normalized_name":
+                _normalizedName ?? normalizeText(_nameCtrl.text.trim()),
+            // Alış ve Stok GÖNDERİLMEZ.
             "selling_price": double.tryParse(_sellPriceCtrl.text) ?? 0,
             "critical_stock_level":
                 double.tryParse(_criticalStockCtrl.text) ?? 10,
             "unit_type": _selectedUnit,
             "vat_rate": int.tryParse(_vatRateCtrl.text) ?? 0,
             "local_details": localDetails,
-            // Eğer resim autocomplete'den geldiyse (File null ama URL değişmişse) bunu backend'e söylememiz gerekebilir
-            // Ancak şu anki yapıda sadece File upload veya mevcut kalması destekleniyor olabilir.
-            // Custom bir logic gerekirse backend güncellemesi isteyebilir.
-            // Şimdilik sadece File upload'ı gönderiyoruz.
           },
           image: _selectedImage,
-          onSuccess: () => _onSuccess("Ürün güncellendi"),
+          onSuccess: () => _onSuccess("Ürün başarıyla güncellendi."),
           onError: _onError,
         );
-
-        debugPrint("normalized name: ${normalizeText(_nameCtrl.text)}");
       } else {
-        await controller.addProduct(
-          name: _nameCtrl.text,
-          normalizedName: _normalizedName ?? normalizeText(_nameCtrl.text),
-          barcode: _barcodeCtrl.text,
-          buyingPrice: double.tryParse(_buyPriceCtrl.text) ?? 0,
+        // 🔥 YENİ EKLEME MODU (Yeni controller yapısına tam uyumlu)
+        await controller.createProduct(
+          name: _nameCtrl.text.trim(),
+          normalizedName:
+              _normalizedName ?? normalizeText(_nameCtrl.text.trim()),
+          barcode: _barcodeCtrl.text.trim(),
+          buyingPrice: 0, // Başlangıç her zaman 0
           sellingPrice: double.tryParse(_sellPriceCtrl.text) ?? 0,
-          initialStock: double.tryParse(_stockCtrl.text) ?? 0,
-          expirationDate: _selectedDate,
           unitType: _selectedUnit,
           vatRate: int.tryParse(_vatRateCtrl.text) ?? 0,
           criticalStockLevel: double.tryParse(_criticalStockCtrl.text) ?? 10,
           localDetails: localDetails,
-          image: _selectedImage,
           vetilacImagePath:
               _selectedImage == null ? _selectedRelativePath : null,
-          onSuccess: () => _onSuccess("Ürün eklendi"),
+          image: _selectedImage,
+          onSuccess:
+              () => _onSuccess(
+                "Ürün başarıyla eklendi.\nStok girmek için Fatura modülünü kullanın.",
+              ),
           onError: _onError,
         );
-        debugPrint("1. _selectedRelativePath: $_selectedRelativePath");
-        debugPrint("2. _networkImageUrl: $_networkImageUrl");
       }
     } catch (e) {
       _onError(e.toString());
@@ -360,18 +354,100 @@ class _ProductFormDialogState extends ConsumerState<ProductFormDialog>
   void _onSuccess(String msg) {
     if (!mounted) return;
     setState(() => _isLoading = false);
-    Navigator.pop(context);
+    Navigator.pop(context); // Dialogu kapat
     showDialog(
       context: context,
-      builder: (context) => InfoDialog(title: "Başarılı", content: msg),
+      builder:
+          (context) => InfoDialog(
+            title: "Başarılı",
+            content: msg,
+            type: InfoDialogType.success,
+          ),
     );
   }
 
   void _onError(String err) {
     if (!mounted) return;
     setState(() => _isLoading = false);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(err), backgroundColor: AppColors.error),
+    showDialog(
+      context: context,
+      builder:
+          (context) => InfoDialog(
+            title: "Hata",
+            content: err,
+            type: InfoDialogType.error,
+          ),
+    );
+  }
+
+  // --- TARİHÇE GÖSTER (YENİ EKLENDİ) ---
+  void _showPriceHistory() {
+    final history = widget.product?.buyingPriceHistory ?? [];
+
+    showDialog(
+      context: context,
+      builder:
+          (ctx) => AlertDialog(
+            title: const Row(
+              children: [
+                Icon(Icons.history, color: AppColors.primary),
+                SizedBox(width: 10),
+                Text("Fiyat Geçmişi"),
+              ],
+            ),
+            content: SizedBox(
+              width: double.maxFinite,
+              height: 300,
+              child:
+                  history.isEmpty
+                      ? const Center(
+                        child: Text("Henüz fatura girişi yapılmamış."),
+                      )
+                      : ListView.separated(
+                        itemCount: history.length,
+                        separatorBuilder: (c, i) => const Divider(),
+                        itemBuilder: (c, i) {
+                          final item = history[i];
+                          final price =
+                              double.tryParse(item['price'].toString()) ?? 0;
+                          final dateStr =
+                              item['date'] != null
+                                  ? DateFormat('dd.MM.yyyy HH:mm').format(
+                                    DateTime.parse(item['date'].toString()),
+                                  )
+                                  : '-';
+                          final invoiceNo = item['invoice_no'] ?? 'Bilinmiyor';
+
+                          return ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            leading: const CircleAvatar(
+                              backgroundColor: AppColors.background,
+                              child: Text(
+                                "₺",
+                                style: TextStyle(color: AppColors.textPrimary),
+                              ),
+                            ),
+                            title: Text(
+                              "₺${price.toStringAsFixed(2)}",
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                            subtitle: Text(
+                              "Fatura: $invoiceNo\nTarih: $dateStr",
+                            ),
+                          );
+                        },
+                      ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text("Kapat"),
+              ),
+            ],
+          ),
     );
   }
 
@@ -518,18 +594,16 @@ class _ProductFormDialogState extends ConsumerState<ProductFormDialog>
     );
   }
 
-  // --- TAB 1: GENEL BİLGİLER (RESİM & AUTOCOMPLETE BURADA) ---
+  // --- TAB 1: GENEL BİLGİLER (KORUNAN MÜKEMMEL TASARIM) ---
   Widget _buildGeneralTab(bool isEditing) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 1. RESİM ALANI (En Üstte)
           Center(child: _buildImageHeader()),
           const SizedBox(height: 24),
 
-          // 2. AUTOCOMPLETE (Sadece Ekleme Modunda)
           if (!isEditing)
             _buildVetilacAutocomplete()
           else
@@ -544,7 +618,6 @@ class _ProductFormDialogState extends ConsumerState<ProductFormDialog>
 
           const SizedBox(height: 16),
 
-          // 3. FİYATLAR & BARKOD
           Row(
             children: [
               Expanded(
@@ -564,13 +637,35 @@ class _ProductFormDialogState extends ConsumerState<ProductFormDialog>
                 flex: 3,
                 child: Row(
                   children: [
+                    // 🔥 ALIŞ FİYATI: SADECE OKUNUR VE TARİHÇELİ
                     Expanded(
                       child: TextFormField(
                         controller: _buyPriceCtrl,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
+                        readOnly: true, // Kilitlendi
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                        decoration: InputDecoration(
                           labelText: "Alış",
                           suffixText: "₺",
+                          fillColor: Colors.grey.shade100, // Görsel kilit
+                          filled: true,
+                          suffixIcon:
+                              isEditing
+                                  ? IconButton(
+                                    icon: const Icon(
+                                      Icons.history,
+                                      color: AppColors.primary,
+                                    ),
+                                    tooltip: "Fiyat Geçmişi",
+                                    onPressed: _showPriceHistory,
+                                  )
+                                  : const Tooltip(
+                                    message: "Fatura girildikçe güncellenir",
+                                    child: Icon(
+                                      Icons.lock_outline,
+                                      size: 16,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
                         ),
                       ),
                     ),
@@ -593,18 +688,27 @@ class _ProductFormDialogState extends ConsumerState<ProductFormDialog>
           ),
           const SizedBox(height: 16),
 
-          // 4. STOK & DİĞER
           Row(
             children: [
+              // 🔥 STOK MİKTARI: SADECE OKUNUR
               Expanded(
                 child: TextFormField(
                   controller: _stockCtrl,
-                  readOnly: isEditing,
-                  keyboardType: TextInputType.number,
+                  readOnly: true, // Kilitlendi
+                  style: const TextStyle(fontWeight: FontWeight.bold),
                   decoration: InputDecoration(
-                    labelText: isEditing ? "Stok" : "Başlangıç Stok",
+                    labelText: "Stok Miktarı",
                     prefixIcon: const Icon(Icons.inventory_2_outlined),
-                    fillColor: isEditing ? Colors.grey.shade100 : null,
+                    fillColor: Colors.grey.shade100, // Görsel kilit
+                    filled: true,
+                    suffixIcon: const Tooltip(
+                      message: "Fatura girildikçe güncellenir",
+                      child: Icon(
+                        Icons.lock_outline,
+                        size: 16,
+                        color: Colors.grey,
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -622,6 +726,19 @@ class _ProductFormDialogState extends ConsumerState<ProductFormDialog>
             ],
           ),
 
+          // Kullanıcıyı bilgilendirme
+          const Padding(
+            padding: EdgeInsets.only(top: 8, left: 4),
+            child: Text(
+              "* Alış fiyatı ve Stok miktarı Fatura (Mal Kabul) işlemi ile güncellenir.",
+              style: TextStyle(
+                fontSize: 11,
+                color: Colors.grey,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ),
+
           if (!isEditing) ...[
             const SizedBox(height: 16),
             TextFormField(
@@ -629,14 +746,13 @@ class _ProductFormDialogState extends ConsumerState<ProductFormDialog>
               readOnly: true,
               onTap: () => _selectDate(context),
               decoration: const InputDecoration(
-                labelText: "Son Kullanma Tarihi",
+                labelText: "Son Kullanma Tarihi (Opsiyonel)",
                 prefixIcon: Icon(Icons.calendar_today),
                 suffixIcon: Icon(Icons.arrow_drop_down),
               ),
             ),
           ],
 
-          // ADVANCED SETTINGS
           Center(
             child: TextButton.icon(
               onPressed:
@@ -686,7 +802,6 @@ class _ProductFormDialogState extends ConsumerState<ProductFormDialog>
     );
   }
 
-  // --- RESİM HEADER WIDGETI ---
   Widget _buildImageHeader() {
     ImageProvider? imageProvider;
 
@@ -768,7 +883,6 @@ class _ProductFormDialogState extends ConsumerState<ProductFormDialog>
     );
   }
 
-  // --- GELİŞMİŞ AUTOCOMPLETE WIDGETI (RawAutocomplete) ---
   Widget _buildVetilacAutocomplete() {
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -783,16 +897,13 @@ class _ProductFormDialogState extends ConsumerState<ProductFormDialog>
           onSelected: (selection) async {
             _nameCtrl.text = selection['raw_name'];
             _normalizedName = selection['normalized_name'];
-            // 1. Ham veriyi (Relative) sakla
             _selectedRelativePath = selection['image_path'];
-
             _networkImageUrl =
                 selection['image_path'] != null
                     ? _getImageUrl(selection['image_path'])
                     : selection['full_image_url'];
             setState(() {});
 
-            // Detayları çek
             final data = await ref
                 .read(productControllerProvider)
                 .getVetilacDetails(selection['id']);
@@ -813,7 +924,6 @@ class _ProductFormDialogState extends ConsumerState<ProductFormDialog>
             focusNode,
             onFieldSubmitted,
           ) {
-            // State ile senkronizasyon
             if (_nameCtrl.text.isNotEmpty && textController.text.isEmpty) {
               textController.text = _nameCtrl.text;
             }
@@ -872,8 +982,6 @@ class _ProductFormDialogState extends ConsumerState<ProductFormDialog>
                         (ctx, index) => const Divider(height: 1, indent: 60),
                     itemBuilder: (BuildContext context, int index) {
                       final option = options.elementAt(index);
-
-                      // Resim URL'ini hazırla
                       String? imgUrl;
                       if (option['image_path'] != null) {
                         imgUrl = _getImageUrl(option['image_path']);
@@ -947,7 +1055,6 @@ class _ProductFormDialogState extends ConsumerState<ProductFormDialog>
     );
   }
 
-  // --- DİĞER TABLAR (AYNI KALDI) ---
   Widget _buildDetailsTab() {
     return ProductDetailsTab(
       groupCtrl: _groupCtrl,
@@ -979,6 +1086,7 @@ class _ProductFormDialogState extends ConsumerState<ProductFormDialog>
     );
   }
 
+  // 🔥 ÇÖKME HATASI BURADA DÜZELTİLDİ: quantity değeri güvenli parse ediliyor.
   Widget _buildStockHistoryTab() {
     return FutureBuilder<List<dynamic>>(
       future: _stockHistoryFuture,
@@ -992,6 +1100,10 @@ class _ProductFormDialogState extends ConsumerState<ProductFormDialog>
           separatorBuilder: (c, i) => const Divider(),
           itemBuilder: (context, index) {
             final item = snapshot.data![index];
+            final double qty =
+                double.tryParse(item['quantity'].toString()) ??
+                0; // 🔥 GÜVENLİ PARSE
+
             return ListTile(
               leading: Container(
                 padding: const EdgeInsets.all(8),
@@ -1002,7 +1114,7 @@ class _ProductFormDialogState extends ConsumerState<ProductFormDialog>
                 child: const Icon(Icons.history, color: AppColors.primary),
               ),
               title: Text(
-                "${item['quantity'] > 0 ? '+' : ''}${item['quantity']} Adet",
+                "${qty > 0 ? '+' : ''}${qty.toStringAsFixed(0)} Adet",
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
               subtitle: Text(

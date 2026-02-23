@@ -1,225 +1,350 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../products/domain/models/product.dart';
+import '../../../products/presentation/providers/product_controller.dart';
+import '../../../products/presentation/widgets/product_card.dart';
+import '../providers/cart_provider.dart';
+import '../widgets/add_to_cart_dialog.dart';
 import '../widgets/sale_cart_list.dart';
-import '../widgets/sale_product_search.dart';
 import '../widgets/sale_summary_panel.dart';
 
-class QuickSaleScreen extends StatefulWidget {
+class QuickSaleScreen extends ConsumerStatefulWidget {
   const QuickSaleScreen({super.key});
 
   @override
-  State<QuickSaleScreen> createState() => _QuickSaleScreenState();
+  ConsumerState<QuickSaleScreen> createState() => _QuickSaleScreenState();
 }
 
-class _QuickSaleScreenState extends State<QuickSaleScreen> {
-  // --- STATE ---
-  final List<CartItem> _cartItems = [];
+class _QuickSaleScreenState extends ConsumerState<QuickSaleScreen> {
+  final TextEditingController _searchCtrl = TextEditingController();
   String _selectedPaymentMethod = 'CASH';
-  // Aktif kullanıcı bilgisi (Normalde AuthProvider'dan gelir)
-  final String _activeUserName = "Vet. Hasan ELÇİN";
 
-  // --- LOGIC ---
+  // --- SEPET İŞLEMLERİ ---
+  void _onProductTap(Product product) {
+    // Miktar seçme dialogunu aç
+    showDialog(
+      context: context,
+      builder:
+          (context) => AddToCartDialog(
+            product: product,
+            onConfirmed: (qty) {
+              final cartItem = CartItem(
+                productId: product.id,
+                name: product.name,
+                unitPrice: product.sellingPrice,
+                quantity: qty,
+              );
+              ref.read(cartProvider.notifier).addItem(cartItem);
 
-  void _addProduct(String query) {
-    // Burada backend'den ürün aranacak. Şimdilik dummy ekliyoruz.
-    setState(() {
-      _cartItems.add(
-        CartItem(
-          productId: DateTime.now().toString(), // Dummy ID
-          name: "Örnek Ürün ($query)",
-          unitPrice: 150.0,
-        ),
-      );
-    });
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text("${product.name} sepete eklendi!"),
+                  duration: const Duration(milliseconds: 800),
+                  backgroundColor: AppColors.success,
+                  behavior: SnackBarBehavior.floating,
+                  width: 300,
+                ),
+              );
+            },
+          ),
+    );
   }
 
-  void _updateQuantity(int index, double newQty) {
-    setState(() {
-      _cartItems[index].quantity = newQty;
-    });
-  }
-
-  void _removeItem(int index) {
-    setState(() {
-      _cartItems.removeAt(index);
-    });
-  }
-
-  double get _subTotal => _cartItems.fold(0, (sum, item) => sum + item.total);
-  double get _discount => 0.0; // İleride indirim mantığı eklenebilir
-
-  // Backend'e Gönderilecek Veri Paketi
   void _completeSale() {
-    if (_cartItems.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Sepet boş! Lütfen ürün ekleyin.")),
-      );
+    final cartItems = ref.read(cartProvider);
+    if (cartItems.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Sepet boş!")));
       return;
     }
-
-    // 1. Transaction (Başlık) Verisi
-    final transactionData = {
-      "tenant_id": "CURRENT_TENANT_ID",
-      "user_id": "CURRENT_USER_ID", // Auth'dan gelecek
-      "customer_id": "SELECTED_CUSTOMER_ID", // Autocomplete'den gelecek
-      "total_amount": _subTotal,
-      "discount_amount": _discount,
-      "final_amount": _subTotal - _discount,
-      "payment_status": _selectedPaymentMethod == 'DEBT' ? 'UNPAID' : 'PAID',
-      "payment_method": _selectedPaymentMethod,
-      "note": "Hızlı Satış Ekranı",
-    };
-
-    // 2. Transaction Items (Satırlar) Verisi
-    final transactionItemsData =
-        _cartItems
-            .map(
-              (item) => {
-                "product_id": item.productId,
-                "quantity": item.quantity,
-                "snapshot_price": item.unitPrice,
-                "total_row_price": item.total,
-              },
-            )
-            .toList();
-
-    // 3. Debug: Konsola bas (İleride Controller'a gidecek)
-    debugPrint("--- SATIŞ TAMAMLANIYOR ---");
-    debugPrint("Başlık: $transactionData");
-    debugPrint("Kalemler: $transactionItemsData");
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text("Satış başarıyla oluşturuldu! (Simülasyon)"),
-        backgroundColor: AppColors.success,
-      ),
-    );
-
-    // Temizle
-    setState(() {
-      _cartItems.clear();
-    });
+    // TODO: Backend bağlantısı burada yapılacak
+    debugPrint("Satış Tamamlandı: ${cartItems.length} kalem ürün.");
+    ref.read(cartProvider.notifier).clearCart();
   }
 
   @override
   Widget build(BuildContext context) {
+    // Ürün listesini Products ekranındaki gibi filtered provider'dan alıyoruz
+    final productsAsync = ref.watch(filteredProductListProvider);
+    final cartItems = ref.watch(cartProvider);
+    final cartNotifier = ref.read(cartProvider.notifier);
+
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text("Hızlı Satış & POS"),
-        actions: [
-          // Aktif Kullanıcı Bilgisi
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            margin: const EdgeInsets.only(right: 16),
-            decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: AppColors.primary.withOpacity(0.3)),
-            ),
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.account_circle,
-                  color: AppColors.primary,
-                  size: 20,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  _activeUserName,
-                  style: const TextStyle(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+      appBar: AppBar(title: const Text("Hızlı Satış & POS"), elevation: 0),
       body: LayoutBuilder(
         builder: (context, constraints) {
-          // RESPONSIVE LOGIC
-          if (constraints.maxWidth > 900) {
-            // DESKTOP LAYOUT (Split View)
-            return Row(
-              children: [
-                // Sol Taraf: Arama ve Liste
-                Expanded(
-                  flex: 7, // %70 Genişlik
+          // Responsive Kırılma Noktası
+          final isDesktop = constraints.maxWidth > 900;
+
+          return Row(
+            children: [
+              // --- SOL TARAF (ÜRÜNLER + SEPET) ---
+              Expanded(
+                flex: 7,
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
                   child: Column(
                     children: [
-                      Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: SaleProductSearch(
-                          onSearch: _addProduct,
-                          onScanTap: () => debugPrint("Kamera açılacak"),
+                      // 1. ARAMA ÇUBUĞU (Products ekranındaki mantık)
+                      TextField(
+                        controller: _searchCtrl,
+                        onChanged:
+                            (val) => ref
+                                .read(productControllerProvider)
+                                .searchProducts(val),
+                        decoration: InputDecoration(
+                          hintText: "Ürün adı veya barkod okutun...",
+                          prefixIcon: const Icon(
+                            Icons.search,
+                            color: AppColors.textSecondary,
+                          ),
+                          suffixIcon: IconButton(
+                            icon: const Icon(Icons.qr_code_scanner),
+                            onPressed: () {
+                              /* Kamera tarama logic */
+                            },
+                          ),
+                          filled: true,
+                          fillColor: Colors.white,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
                         ),
                       ),
+
+                      const SizedBox(height: 16),
+
+                      // 2. ÜRÜN GRID (Kırmızı Alan)
                       Expanded(
-                        child: SaleCartList(
-                          items: _cartItems,
-                          onQuantityChanged: _updateQuantity,
-                          onRemove: _removeItem,
+                        flex: 3,
+                        child: productsAsync.when(
+                          loading:
+                              () => const Center(
+                                child: CircularProgressIndicator(),
+                              ),
+                          error: (err, _) => Center(child: Text("Hata: $err")),
+                          data: (products) {
+                            if (products.isEmpty)
+                              return const Center(
+                                child: Text("Ürün bulunamadı."),
+                              );
+
+                            // Grid sütun sayısını dinamik ayarla
+                            int crossAxisCount =
+                                constraints.maxWidth > 1200
+                                    ? 4
+                                    : (isDesktop ? 3 : 2);
+
+                            return GridView.builder(
+                              cacheExtent: 1000,
+                              physics: const BouncingScrollPhysics(),
+                              itemCount: products.length,
+                              gridDelegate:
+                                  SliverGridDelegateWithFixedCrossAxisCount(
+                                    crossAxisCount: crossAxisCount,
+                                    childAspectRatio: 0.75, // Kart oranı
+                                    crossAxisSpacing: 12,
+                                    mainAxisSpacing: 12,
+                                  ),
+                              itemBuilder: (ctx, i) {
+                                return ProductCard(
+                                  product: products[i],
+                                  isPosMode: true, // 🔥 POS Modu Aktif
+                                  onAddToCart: () => _onProductTap(products[i]),
+                                );
+                              },
+                            );
+                          },
                         ),
+                      ),
+
+                      const SizedBox(height: 16),
+                      const Divider(),
+
+                      // 3. YATAY SEPET LİSTESİ (Yeşil Alan)
+                      SizedBox(
+                        height: 140, // Yeterli yükseklik
+                        child:
+                            cartItems.isEmpty
+                                ? Center(
+                                  child: Text(
+                                    "Sepet Boş 🛒\nÜrün eklemek için yukarıdan seçin.",
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: Colors.grey.shade500,
+                                    ),
+                                  ),
+                                )
+                                : ListView.separated(
+                                  scrollDirection: Axis.horizontal,
+                                  itemCount: cartItems.length,
+                                  separatorBuilder:
+                                      (_, __) => const SizedBox(width: 12),
+                                  itemBuilder: (ctx, i) {
+                                    final item = cartItems[i];
+                                    return _HorizontalCartItem(
+                                      item: item,
+                                      onAdd:
+                                          () => cartNotifier.updateQuantity(
+                                            i,
+                                            item.quantity + 1,
+                                          ),
+                                      onRemove:
+                                          () => cartNotifier.updateQuantity(
+                                            i,
+                                            item.quantity - 1,
+                                          ),
+                                      onDelete:
+                                          () => cartNotifier.removeItem(i),
+                                    );
+                                  },
+                                ),
                       ),
                     ],
                   ),
                 ),
-                // Sağ Taraf: Özet ve İşlem
+              ),
+
+              // --- SAĞ TARAF (ÖZET PANELİ) ---
+              // Mobilde bunu gizleyip bir butonla açılır yapabiliriz ama
+              // şimdilik senin desktop layoutuna sadık kalıyorum.
+              if (isDesktop)
                 Expanded(
-                  flex: 3, // %30 Genişlik
+                  flex: 3,
                   child: SaleSummaryPanel(
-                    subTotal: _subTotal,
-                    discount: _discount,
-                    selectedPaymentMethod: _selectedPaymentMethod,
-                    onPaymentMethodChanged: (val) {
-                      if (val != null)
-                        setState(() => _selectedPaymentMethod = val);
+                    // 1. Toplam Tutar: CartNotifier üzerinden hesaplanıyor
+                    subTotal: cartNotifier.subTotal,
+
+                    // 2. İskonto: Şimdilik 0 (İleride buraya logic ekleriz)
+                    discount: 0,
+
+                    // 3. Tamamlanma Callback'i:
+                    // Satış mantığını panelin içine taşıdığımız için burası artık sadece
+                    // "İşlem bitti, ekranda konfetiler patlat" gibi UI efektleri için kullanılabilir.
+                    // Şimdilik boş bırakıyoruz çünkü panel kendi temizliğini yapıyor.
+                    onCompleteSale: () {
+                      debugPrint("Satış işlemi parent tarafından duyuldu.");
                     },
-                    onCompleteSale: _completeSale,
                   ),
                 ),
-              ],
-            );
-          } else {
-            // MOBILE LAYOUT (Stack)
-            return Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(12.0),
-                  child: SaleProductSearch(
-                    onSearch: _addProduct,
-                    onScanTap: () => debugPrint("Kamera açılacak"),
-                  ),
-                ),
-                Expanded(
-                  child: SaleCartList(
-                    items: _cartItems,
-                    onQuantityChanged: _updateQuantity,
-                    onRemove: _removeItem,
-                  ),
-                ),
-                // Mobilde özet paneli biraz daha kompakt olabilir veya
-                // BottomSheet olarak açılabilir. Şimdilik alta sabitliyoruz.
-                Container(
-                  height: 220, // Sabit yükseklik
-                  child: SaleSummaryPanel(
-                    subTotal: _subTotal,
-                    discount: _discount,
-                    selectedPaymentMethod: _selectedPaymentMethod,
-                    onPaymentMethodChanged: (val) {
-                      if (val != null)
-                        setState(() => _selectedPaymentMethod = val);
-                    },
-                    onCompleteSale: _completeSale,
-                  ),
-                ),
-              ],
-            );
-          }
+            ],
+          );
         },
+      ),
+    );
+  }
+}
+
+// --- YENİ WIDGET: YATAY SEPET KARTI (Yeşil Alan İçin) ---
+class _HorizontalCartItem extends StatelessWidget {
+  final CartItem item;
+  final VoidCallback onAdd;
+  final VoidCallback onRemove;
+  final VoidCallback onDelete;
+
+  const _HorizontalCartItem({
+    required this.item,
+    required this.onAdd,
+    required this.onRemove,
+    required this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 280, // Sabit genişlik
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 5,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          // Üst: İsim ve Silme
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  item.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+              InkWell(
+                onTap: onDelete,
+                child: const Icon(Icons.close, size: 18, color: Colors.grey),
+              ),
+            ],
+          ),
+
+          // Orta: Birim Fiyat
+          Text(
+            "₺${item.unitPrice.toStringAsFixed(2)} / adet",
+            style: const TextStyle(fontSize: 12, color: Colors.grey),
+          ),
+
+          // Alt: Miktar ve Toplam
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // Miktar Kontrolü
+              Container(
+                decoration: BoxDecoration(
+                  color: AppColors.background,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    _miniBtn(Icons.remove, onRemove),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      child: Text(
+                        item.quantity.toStringAsFixed(0),
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    _miniBtn(Icons.add, onAdd),
+                  ],
+                ),
+              ),
+              // Toplam
+              Text(
+                "₺${item.total.toStringAsFixed(2)}",
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: AppColors.primary,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _miniBtn(IconData icon, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.all(6.0),
+        child: Icon(icon, size: 16, color: AppColors.textPrimary),
       ),
     );
   }

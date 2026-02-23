@@ -16,6 +16,7 @@ class Product {
   final bool isActive;
   final DateTime? createdAt;
   final DateTime? updatedAt;
+  final List<Map<String, dynamic>> buyingPriceHistory;
 
   Product({
     required this.id,
@@ -35,6 +36,7 @@ class Product {
     this.isActive = true,
     this.createdAt,
     this.updatedAt,
+    this.buyingPriceHistory = const [],
   });
 
   // Vetilac verilerine kolay erişim için getter'lar
@@ -42,8 +44,68 @@ class Product {
   List<dynamic>? get relatedDrugs => localDetails?['related_drugs'];
   Map<String, dynamic>? get drugDetails => localDetails?['details'];
 
+  // copyWith metodu (State yönetimi için pratik)
+  Product copyWith({
+    String? id,
+    String? name,
+    String? barcode,
+    double? sellingPrice,
+    double? buyingPrice,
+    double? stockQuantity,
+    double? criticalStockLevel,
+    int? vatRate,
+    String? currency,
+    String? unitType,
+    String? customImagePath,
+    String? fullImageUrl,
+    Map<String, dynamic>? localDetails,
+    bool? isActive,
+    List<Map<String, dynamic>>? buyingPriceHistory,
+  }) {
+    return Product(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      barcode: barcode ?? this.barcode,
+      normalizedName: normalizedName ?? this.normalizedName,
+      sellingPrice: sellingPrice ?? this.sellingPrice,
+      buyingPrice: buyingPrice ?? this.buyingPrice,
+      stockQuantity: stockQuantity ?? this.stockQuantity,
+      criticalStockLevel: criticalStockLevel ?? this.criticalStockLevel,
+      vatRate: vatRate ?? this.vatRate,
+      currency: currency ?? this.currency,
+      unitType: unitType ?? this.unitType,
+      customImagePath: customImagePath ?? this.customImagePath,
+      fullImageUrl: fullImageUrl ?? this.fullImageUrl,
+      localDetails: localDetails ?? this.localDetails,
+      isActive: isActive ?? this.isActive,
+      createdAt: this.createdAt, // Genelde değişmez
+      updatedAt: DateTime.now(),
+      buyingPriceHistory: buyingPriceHistory ?? this.buyingPriceHistory,
+    );
+  }
+
   // JSON'dan Nesneye Çevirme (Factory Constructor)
   factory Product.fromJson(Map<String, dynamic> json) {
+    // Tarihçe alanını güvenli parse etme
+    List<Map<String, dynamic>> history = [];
+    if (json['buying_price_history'] != null) {
+      if (json['buying_price_history'] is List) {
+        history =
+            (json['buying_price_history'] as List).map((e) {
+              return Map<String, dynamic>.from(e);
+            }).toList();
+
+        // Tarihe göre sırala (En yeni en üstte)
+        history.sort((a, b) {
+          DateTime dateA =
+              DateTime.tryParse(a['date']?.toString() ?? '') ?? DateTime(2000);
+          DateTime dateB =
+              DateTime.tryParse(b['date']?.toString() ?? '') ?? DateTime(2000);
+          return dateB.compareTo(dateA);
+        });
+      }
+    }
+
     return Product(
       id: json['id'] ?? '',
       name: json['name'] ?? 'İsimsiz Ürün',
@@ -73,6 +135,7 @@ class Product {
           json['updated_at'] != null
               ? DateTime.tryParse(json['updated_at'].toString())
               : null,
+      buyingPriceHistory: history,
     );
   }
 }

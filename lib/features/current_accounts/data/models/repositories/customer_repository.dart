@@ -84,12 +84,18 @@ class CustomerRepository {
   }
 
   // 3. Yeni Müşteri Ekle
-  Future<void> createCustomer(Map<String, dynamic> data) async {
+  // 3. Yeni Müşteri Ekle (GÜNCELLENDİ: Artık Geriye Veri Dönüyor)
+  Future<CustomerModel> createCustomer(Map<String, dynamic> data) async {
     try {
       final response = await _apiClient.dio.post('/customers', data: data);
+
       if (kDebugMode) {
         debugPrint('🟢 [CustomerRepo] createCustomer: ${response.statusCode}');
+        debugPrint('📦 Created Data: ${response.data}');
       }
+
+      // Backend oluşturduğu kaydı (ID dahil) geri dönüyor, bunu modele çevirip UI'a verelim
+      return CustomerModel.fromJson(response.data);
     } catch (e) {
       debugPrint('🔴 [CustomerRepo] Create Error: $e');
       rethrow;

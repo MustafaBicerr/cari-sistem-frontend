@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/navigation/app_router.dart';
 import 'core/theme/app_colors.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,6 +24,18 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
         scaffoldBackgroundColor: AppColors.background,
       ),
+      // 🔥🔥🔥 2. BU KISMI EKLE (Localization Ayarları) 🔥🔥🔥
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('tr', 'TR'), // Türkçe'yi destekle
+        Locale('en', 'US'), // İngilizce (Yedek olarak kalsın)
+      ],
+      // Uygulamanın varsayılan dili Türkçe olsun
+      locale: const Locale('tr', 'TR'),
       routerConfig: AppRouter.router,
     );
   }

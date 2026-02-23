@@ -1,6 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:shimmer/shimmer.dart'; // PAKET EKLENDİ
+import 'package:shimmer/shimmer.dart';
 import '../../../../core/constants/api_constants.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../domain/models/product.dart';
@@ -8,8 +8,15 @@ import 'product_form_dialog.dart';
 
 class ProductCard extends StatelessWidget {
   final Product product;
+  final bool isPosMode; // 🔥 YENİ: Satış ekranında mı?
+  final VoidCallback? onAddToCart; // 🔥 YENİ: Sepete ekleme aksiyonu
 
-  const ProductCard({super.key, required this.product});
+  const ProductCard({
+    super.key,
+    required this.product,
+    this.isPosMode = false,
+    this.onAddToCart,
+  });
 
   String _getImageUrl(String path) {
     if (path.startsWith('http')) return path;
@@ -22,13 +29,20 @@ class ProductCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // RepaintBoundary: GPU Cache (Aynen koruyoruz)
     return RepaintBoundary(
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0x1A9E9E9E)),
+          border: Border.all(
+            color:
+                isPosMode
+                    ? AppColors.primary.withOpacity(
+                      0.3,
+                    ) // POS modunda çerçeve daha belirgin
+                    : const Color(0x1A9E9E9E),
+            width: isPosMode ? 1.5 : 1,
+          ),
           boxShadow: const [
             BoxShadow(
               color: Color(0x08000000),
@@ -40,61 +54,63 @@ class ProductCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 1. RESİM ALANI (Skeleton Burada Çalışacak)
+            // 1. RESİM ALANI (Tıklanınca aksiyon)
             Expanded(
               flex: 3,
-              child: Container(
-                width: double.infinity,
-                decoration: const BoxDecoration(
-                  color: AppColors.background, // Resim yokken zemin rengi
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+              child: InkWell(
+                onTap:
+                    isPosMode
+                        ? onAddToCart
+                        : null, // POS'ta resme tıklayınca da ekle
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(16),
                 ),
-                child: ClipRRect(
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(16),
+                child: Container(
+                  width: double.infinity,
+                  decoration: const BoxDecoration(
+                    color: AppColors.background,
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(16),
+                    ),
                   ),
-                  child:
-                      product.fullImageUrl != null
-                          ? CachedNetworkImage(
-                            imageUrl: _getImageUrl(product.fullImageUrl!),
-                            fit: BoxFit.cover,
-                            memCacheHeight: 300,
-                            memCacheWidth: 300,
-                            fadeInDuration: const Duration(
-                              milliseconds: 200,
-                            ), // Yumuşak geçiş
-                            // İŞTE SİHİR BURADA: Placeholder (Yüklenirken Gösterilecek)
-                            placeholder:
-                                (context, url) => Shimmer.fromColors(
-                                  baseColor: const Color(0xFFE0E0E0), // Gri
-                                  highlightColor: const Color(
-                                    0xFFF5F5F5,
-                                  ), // Parlayan Beyaz
-                                  child: Container(color: Colors.white),
-                                ),
-
-                            // Hata Durumu (İkon göster)
-                            errorWidget:
-                                (context, url, error) => const Center(
-                                  child: Icon(
-                                    Icons.image_not_supported_outlined,
-                                    size: 32,
-                                    color: Color(0x4D2196F3),
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(16),
+                    ),
+                    child:
+                        product.fullImageUrl != null
+                            ? CachedNetworkImage(
+                              imageUrl: _getImageUrl(product.fullImageUrl!),
+                              fit: BoxFit.cover,
+                              memCacheHeight: 300,
+                              memCacheWidth: 300,
+                              placeholder:
+                                  (context, url) => Shimmer.fromColors(
+                                    baseColor: const Color(0xFFE0E0E0),
+                                    highlightColor: const Color(0xFFF5F5F5),
+                                    child: Container(color: Colors.white),
                                   ),
-                                ),
-                          )
-                          : const Center(
-                            child: Icon(
-                              Icons.inventory_2_outlined,
-                              size: 48,
-                              color: Color(0x4D2196F3),
+                              errorWidget:
+                                  (context, url, error) => const Center(
+                                    child: Icon(
+                                      Icons.image_not_supported_outlined,
+                                      color: Color(0x4D2196F3),
+                                    ),
+                                  ),
+                            )
+                            : const Center(
+                              child: Icon(
+                                Icons.inventory_2_outlined,
+                                size: 48,
+                                color: Color(0x4D2196F3),
+                              ),
                             ),
-                          ),
+                  ),
                 ),
               ),
             ),
 
-            // 2. BİLGİ ALANI (Metinler Anlık Gelir, Skeleton'a Gerek Yok)
+            // 2. BİLGİ ALANI
             Expanded(
               flex: 2,
               child: Padding(
@@ -112,20 +128,35 @@ class ProductCard extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
-                            fontSize: 16,
+                            fontSize: 15,
                           ),
                         ),
                         const SizedBox(height: 4),
-                        Text(
-                          "Stok: ${product.stockQuantity.toInt()}",
-                          style: TextStyle(
-                            fontSize: 12,
+                        // Stok Durumu
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
                             color:
                                 product.stockQuantity <
                                         product.criticalStockLevel
-                                    ? AppColors.error
-                                    : AppColors.success,
-                            fontWeight: FontWeight.w500,
+                                    ? AppColors.error.withOpacity(0.1)
+                                    : AppColors.success.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            "Stok: ${product.stockQuantity.toInt()}",
+                            style: TextStyle(
+                              fontSize: 10,
+                              color:
+                                  product.stockQuantity <
+                                          product.criticalStockLevel
+                                      ? AppColors.error
+                                      : AppColors.success,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       ],
@@ -137,29 +168,42 @@ class ProductCard extends StatelessWidget {
                           "₺${product.sellingPrice}",
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
-                            fontSize: 18,
+                            fontSize: 16,
                             color: AppColors.primary,
                           ),
                         ),
+                        // 🔥 MODA GÖRE BUTON DEĞİŞİMİ
                         InkWell(
-                          onTap: () {
-                            showDialog(
-                              context: context,
-                              builder:
-                                  (context) =>
-                                      ProductFormDialog(product: product),
-                            );
-                          },
+                          onTap:
+                              isPosMode
+                                  ? onAddToCart
+                                  : () {
+                                    showDialog(
+                                      context: context,
+                                      builder:
+                                          (context) => ProductFormDialog(
+                                            product: product,
+                                          ),
+                                    );
+                                  },
                           child: Container(
-                            padding: const EdgeInsets.all(6),
-                            decoration: const BoxDecoration(
-                              color: Color(0x1A2196F3),
+                            padding: const EdgeInsets.all(
+                              8,
+                            ), // Dokunma alanı büyüdü
+                            decoration: BoxDecoration(
+                              color:
+                                  isPosMode
+                                      ? AppColors.success
+                                      : const Color(0x1A2196F3),
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(
-                              Icons.edit,
-                              color: AppColors.primary,
-                              size: 20,
+                            child: Icon(
+                              isPosMode
+                                  ? Icons.add_shopping_cart
+                                  : Icons.edit, // İkon değişti
+                              color:
+                                  isPosMode ? Colors.white : AppColors.primary,
+                              size: 18,
                             ),
                           ),
                         ),

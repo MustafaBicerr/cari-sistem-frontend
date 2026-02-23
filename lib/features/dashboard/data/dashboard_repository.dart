@@ -5,6 +5,7 @@ import 'package:mobile/features/dashboard/data/models/turnover_detail_model.dart
 import '../../../../core/api/api_client.dart';
 import '../../../../core/constants/api_constants.dart';
 import 'models/dashboard_summary_model.dart';
+import 'package:flutter/material.dart';
 
 class DashboardRepository {
   final ApiClient _apiClient;
@@ -66,6 +67,7 @@ class DashboardRepository {
   }
 
   // 4. 🚀 MASTER TRANSACTION EXPLORER (Yeni Master Dialog İçin)
+  // 4. 🚀 MASTER TRANSACTION EXPLORER
   Future<List<TransactionMasterModel>> getTransactionMasterDetails(
     String? date,
   ) async {
@@ -75,16 +77,37 @@ class DashboardRepository {
               ? '/dashboard/transaction-master?date=$date'
               : '/dashboard/transaction-master';
 
+      // 🔥 DEBUG 1: İstek atılıyor
+      debugPrint("📡 [REPO] İstek Atılıyor: $path");
+
       final response = await _apiClient.dio.get(path);
 
       if (response.statusCode == 200) {
-        return (response.data as List)
-            .map((e) => TransactionMasterModel.fromJson(e))
-            .toList();
+        final List data = response.data as List;
+
+        // 🔥 DEBUG 2: Backend'den gelen HAM VERİ (İlk elemanı kontrol edelim)
+        if (data.isNotEmpty) {
+          debugPrint("📦 [REPO] Backend Cevabı (İlk Kayıt Örneği):");
+          debugPrint("   -> ID: ${data[0]['id']}");
+          debugPrint("   -> Customer: ${data[0]['customer_name']}");
+          debugPrint("   -> Method: ${data[0]['payment_method']}");
+          debugPrint("   -> Paid Amount: ${data[0]['paid_amount']}");
+          debugPrint(
+            "   -> Collected CASH: ${data[0]['collected_cash']} (⚠️ Burası null ise Backend göndermiyor)",
+          );
+          debugPrint(
+            "   -> Collected CARD: ${data[0]['collected_card']} (⚠️ Burası null ise Backend göndermiyor)",
+          );
+        } else {
+          debugPrint("⚠️ [REPO] Backend boş liste döndürdü!");
+        }
+
+        return data.map((e) => TransactionMasterModel.fromJson(e)).toList();
       } else {
         throw Exception('Master verisi alınamadı');
       }
     } on DioException catch (e) {
+      debugPrint("🔴 [REPO] Hata: ${e.message}");
       throw Exception(e.response?.data['error'] ?? 'Bağlantı hatası');
     }
   }

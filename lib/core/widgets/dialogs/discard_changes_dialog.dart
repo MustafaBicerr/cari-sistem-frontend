@@ -6,6 +6,20 @@ class DiscardChangesDialog extends StatelessWidget {
 
   const DiscardChangesDialog({super.key, required this.onDiscard});
 
+  // 🔥 EKLENEN STATIC METOD
+  // Geriye 'true' dönerse çıkış yapılmalı, 'false' ise iptal.
+  static Future<bool> show(BuildContext context) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder:
+          (context) => DiscardChangesDialog(
+            // ignore: avoid_returning_null_for_void
+            onDiscard: () => Navigator.pop(context, true),
+          ),
+    );
+    return result ?? false;
+  }
+
   @override
   Widget build(BuildContext context) {
     return AlertDialog(

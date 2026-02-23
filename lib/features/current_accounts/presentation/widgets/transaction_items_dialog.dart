@@ -159,7 +159,7 @@ class TransactionItemsDialog extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text(
-                  "Genel Toplam (Enflasyon Dahil)",
+                  "Genel Toplam",
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
                 Text(

@@ -19,7 +19,6 @@ final filteredProductListProvider = Provider<AsyncValue<List<Product>>>((ref) {
     final normalizedQuery = normalizeText(query);
 
     return products.where((product) {
-      // Backend'den normalizedName gelmezse (eski kayıtlar için) client tarafında üret
       final pName = product.normalizedName ?? normalizeText(product.name);
       final pBarcode = product.barcode ?? '';
 
@@ -38,7 +37,6 @@ class ProductController {
 
   Product? findProductByBarcode(String barcode) {
     final productsState = _ref.read(productListProvider);
-    // AsyncValue içindeki veriye erişiyoruz (Data varsa)
     final products = productsState.asData?.value ?? [];
     try {
       return products.firstWhere((p) => p.barcode == barcode);
@@ -51,20 +49,22 @@ class ProductController {
     _ref.read(searchQueryProvider.notifier).state = query;
   }
 
-  Future<void> addProduct({
+  // 🔥 YENİLENMİŞ VE SADELEŞTİRİLMİŞ CREATE METODU
+  Future<void> createProduct({
     required String name,
     required String normalizedName,
     required String barcode,
-    required double buyingPrice,
+    required double
+    buyingPrice, // Sadece bilgi amaçlı kaydedilir, stok maliyetini etkilemez
     required double sellingPrice,
-    required double initialStock,
-    required String unitType, // YENİ: Zorunlu (PIECE, WEIGHT, VOLUME)
-    int vatRate = 0, // İsteğin üzerine default 0
+    // initialStock kaldırıldı! Stok artık 0 başlar.
+    required String unitType,
+    int vatRate = 0,
     double criticalStockLevel = 10,
-    DateTime? expirationDate, // YENİ: SKT
-    Map<String, dynamic>? localDetails, // YENİ: Detaylar ve Notlar
-    String? vetilacImagePath, // YENİ: Vetilac'tan gelen resim yolu
+    Map<String, dynamic>? localDetails,
+    String? vetilacImagePath,
     XFile? image,
+    // SKT parametresi kaldırıldı çünkü stok girmiyoruz.
     required void Function() onSuccess,
     required void Function(String error) onError,
   }) async {
@@ -77,32 +77,23 @@ class ProductController {
         "barcode": barcode,
         "buying_price": buyingPrice,
         "selling_price": sellingPrice,
-        // "stock_quantity": stock, // Backend create endpoint'i bunu almıyor artık
+        "stock_quantity": 0, // 🔥 Başlangıç stoğu her zaman 0
         "unit_type": unitType,
         "vat_rate": vatRate,
         "critical_stock_level": criticalStockLevel,
         "currency": "TRY",
         "local_details": localDetails ?? {},
-        if (vetilacImagePath != null) "custom_image_path": vetilacImagePath,
       };
 
-      // 1. Ürünü oluştur
-      final createdProduct = await repo.createProduct(
-        newProduct,
-        imageFile: image,
-      );
-
-      // 2. Eğer başlangıç stoğu girildiyse, stok hareketini ekle
-      if (initialStock > 0) {
-        await repo.addStock(
-          productId: createdProduct.id,
-          quantity: initialStock,
-          expirationDate:
-              expirationDate ?? DateTime.now().add(const Duration(days: 365)),
-          batchNo: "INIT-${DateTime.now().year}",
-        );
+      // Eğer vetilac'tan gelen resim varsa ekle
+      if (vetilacImagePath != null) {
+        newProduct["custom_image_path"] = vetilacImagePath;
       }
 
+      // Repo'ya gönder
+      await repo.createProduct(newProduct, imageFile: image);
+
+      // Listeyi yenile
       _ref.invalidate(productListProvider);
       onSuccess();
     } catch (e) {
@@ -142,7 +133,7 @@ class ProductController {
     }
   }
 
-  // --- YENİ METODLAR ---
+  // --- STOK ve DIŞ API METODLARI ---
 
   Future<List<Map<String, dynamic>>> searchVetilac(String query) {
     return _ref.read(productRepositoryProvider).searchVetilac(query);
@@ -154,18 +145,5 @@ class ProductController {
 
   Future<List<dynamic>> getProductStocks(String productId) {
     return _ref.read(productRepositoryProvider).getProductStocks(productId);
-  }
-
-  Future<List<Product>> getProductSuggestions(String pattern) async {
-    final productsState = _ref.read(productListProvider);
-    final products = productsState.asData?.value ?? [];
-    final normalizedPattern = normalizeText(pattern);
-
-    return products.where((product) {
-      final pName = product.normalizedName ?? normalizeText(product.name);
-      final pBarcode = product.barcode ?? '';
-      return pName.contains(normalizedPattern) ||
-          pBarcode.contains(normalizedPattern);
-    }).toList();
   }
 }

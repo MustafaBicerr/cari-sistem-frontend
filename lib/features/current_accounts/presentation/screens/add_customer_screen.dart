@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../providers/account_provider.dart';
+// CustomerModel'i import etmeyi unutma
+import '../../data/models/customer_model.dart';
 
 class AddCustomerScreen extends ConsumerStatefulWidget {
   const AddCustomerScreen({super.key});
@@ -25,20 +27,29 @@ class _AddCustomerScreenState extends ConsumerState<AddCustomerScreen> {
     setState(() => _isLoading = true);
     try {
       final repo = ref.read(customerRepositoryProvider);
-      await repo.createCustomer({
+
+      // 1. Müşteriyi Kaydet ve Dönen Veriyi (ID Dahil) Yakala
+      final CustomerModel newCustomer = await repo.createCustomer({
         'full_name': _nameCtrl.text,
         'phone': _phoneCtrl.text,
         'email': _emailCtrl.text,
         'address': _addressCtrl.text,
       });
 
+      // 2. Listeyi Arka Planda Yenile (UI'ı bekletme)
       ref.invalidate(customerListProvider);
 
       if (mounted) {
-        Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Müşteri başarıyla eklendi!")),
+          const SnackBar(
+            content: Text("Müşteri başarıyla eklendi!"),
+            backgroundColor: Colors.green,
+          ),
         );
+
+        // 3. EKRANI KAPAT VE MÜŞTERİ NESNESİNİ GERİ GÖNDER 🚀
+        // Buradaki 'newCustomer' içinde ID var!
+        Navigator.pop(context, newCustomer);
       }
     } catch (e) {
       if (mounted) {
@@ -47,12 +58,13 @@ class _AddCustomerScreenState extends ConsumerState<AddCustomerScreen> {
         );
       }
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    // ... (Build metodu ve UI tamamen aynı kalabilir, sadece _save fonksiyonu değişti)
     return Scaffold(
       appBar: AppBar(title: const Text("Yeni Müşteri Ekle")),
       body: SingleChildScrollView(
