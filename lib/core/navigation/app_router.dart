@@ -20,7 +20,6 @@ import '../../features/sales/presentation/screens/quick_sale_screen.dart';
 import '../../features/sales/presentation/screens/cash_register_screen.dart';
 
 // Stock Screens
-import '../../features/stock/presentation/screens/stock_menu_screen.dart';
 import '../../features/stock/presentation/screens/stock_entry_screen.dart';
 
 // Accounts Screens
@@ -97,7 +96,7 @@ class AppRouter {
           GoRoute(
             path: '/stock',
             // Stok ana sayfasına tıklayınca Menü sayfasını gösteriyoruz.
-            builder: (context, state) => const StockMenuScreen(),
+            builder: (context, state) => const StockEntryScreen(),
             routes: [
               GoRoute(
                 path: 'entry',

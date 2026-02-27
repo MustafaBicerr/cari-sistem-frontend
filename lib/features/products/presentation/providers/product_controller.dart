@@ -54,22 +54,27 @@ class ProductController {
     required String name,
     required String normalizedName,
     required String barcode,
-    required double
-    buyingPrice, // Sadece bilgi amaçlı kaydedilir, stok maliyetini etkilemez
+    required double buyingPrice,
     required double sellingPrice,
-    // initialStock kaldırıldı! Stok artık 0 başlar.
     required String unitType,
     int vatRate = 0,
     double criticalStockLevel = 10,
-    Map<String, dynamic>? localDetails,
+    // 🔥 Değişiklik: UI artık ham verileri gönderiyor, JSON'ı biz kuruyoruz
+    required Map<String, dynamic> detailsMap,
+    required String userNotes,
     String? vetilacImagePath,
     XFile? image,
-    // SKT parametresi kaldırıldı çünkü stok girmiyoruz.
     required void Function() onSuccess,
     required void Function(String error) onError,
   }) async {
     try {
       final repo = _ref.read(productRepositoryProvider);
+
+      // JSON Standartlaştırması (Clean Architecture: İş mantığı buradadır)
+      final standardizedLocalDetails = {
+        "details": detailsMap,
+        "user_notes_on_product": userNotes,
+      };
 
       final newProduct = {
         "name": name,
@@ -77,23 +82,20 @@ class ProductController {
         "barcode": barcode,
         "buying_price": buyingPrice,
         "selling_price": sellingPrice,
-        "stock_quantity": 0, // 🔥 Başlangıç stoğu her zaman 0
+        "stock_quantity": 0,
         "unit_type": unitType,
         "vat_rate": vatRate,
         "critical_stock_level": criticalStockLevel,
         "currency": "TRY",
-        "local_details": localDetails ?? {},
+        "local_details": standardizedLocalDetails, // Standart veri
       };
 
-      // Eğer vetilac'tan gelen resim varsa ekle
       if (vetilacImagePath != null) {
         newProduct["custom_image_path"] = vetilacImagePath;
       }
 
-      // Repo'ya gönder
       await repo.createProduct(newProduct, imageFile: image);
 
-      // Listeyi yenile
       _ref.invalidate(productListProvider);
       onSuccess();
     } catch (e) {
@@ -118,13 +120,36 @@ class ProductController {
 
   Future<void> updateProduct({
     required String id,
-    required Map<String, dynamic> updates,
+    required String name,
+    required String normalizedName,
+    required double sellingPrice,
+    required String unitType,
+    required int vatRate,
+    required double criticalStockLevel,
+    required Map<String, dynamic> detailsMap,
+    required String userNotes,
     XFile? image,
     required void Function() onSuccess,
     required void Function(String error) onError,
   }) async {
     try {
       final repo = _ref.read(productRepositoryProvider);
+
+      final standardizedLocalDetails = {
+        "details": detailsMap,
+        "user_notes_on_product": userNotes,
+      };
+
+      final updates = {
+        "name": name,
+        "normalized_name": normalizedName,
+        "selling_price": sellingPrice,
+        "unit_type": unitType,
+        "vat_rate": vatRate,
+        "critical_stock_level": criticalStockLevel,
+        "local_details": standardizedLocalDetails,
+      };
+
       await repo.updateProduct(id: id, updates: updates, imageFile: image);
       _ref.invalidate(productListProvider);
       onSuccess();

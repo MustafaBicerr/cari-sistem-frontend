@@ -30,5 +30,29 @@ class StockRepository {
     }
   }
 
+  // --- Yeni Tedarikçi Oluşturma (Pre-flight Creation) ---
+  Future<Map<String, dynamic>> createSupplier(
+    Map<String, dynamic> payload,
+  ) async {
+    try {
+      final token = await _storage.read(key: 'auth_token');
+
+      final response = await _dio.post(
+        '/suppliers', // Backend'deki supplier route'umuz
+        data: payload,
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+
+      return response
+          .data; // Backend'in döndürdüğü yeni kayıtlı tedarikçi objesi
+    } on DioException catch (e) {
+      final errorMsg =
+          e.response?.data?['error'] ?? 'Tedarikçi oluşturulurken hata oluştu.';
+      throw Exception(errorMsg);
+    } catch (e) {
+      throw Exception('Beklenmeyen bir hata: $e');
+    }
+  }
+
   // Gerekirse ileride buraya faturayı getirme (getHistory vs) eklenecek
 }

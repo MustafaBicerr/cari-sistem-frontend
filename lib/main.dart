@@ -24,7 +24,7 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
         scaffoldBackgroundColor: AppColors.background,
       ),
-      // 🔥🔥🔥 2. BU KISMI EKLE (Localization Ayarları) 🔥🔥🔥
+      //Localization Ayarları)
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,

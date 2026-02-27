@@ -99,19 +99,36 @@ class _ProductFormDialogState extends ConsumerState<ProductFormDialog>
     _vatRateCtrl.text = p.vatRate.toString();
     _selectedUnit = p.unitType;
     _networkImageUrl = p.fullImageUrl;
-    _notesCtrl.text = p.localDetails?['user_notes_on_product'] ?? '';
 
-    // Detayları Doldur
-    final details = p.localDetails?['details'] ?? {};
-    _groupCtrl.text = details['Grup'] ?? '';
-    _firmCtrl.text = details['Firma'] ?? '';
-    _shapeCtrl.text = details['Şekil'] ?? '';
+    // 🔥 AKILLI OKUMA (Geriye Dönük Uyumluluk)
+    final localData = p.localDetails ?? {};
+
+    // Eğer veri 'details' key'i içindeyse onu al, yoksa (eski düz formattaysa) verinin tamamını 'details' kabul et.
+    final Map<String, dynamic> details =
+        localData.containsKey('details')
+            ? localData['details'] as Map<String, dynamic>
+            : localData;
+
+    _groupCtrl.text = details['Grup']?.toString() ?? '';
+    _firmCtrl.text = details['Firma']?.toString() ?? '';
+    _shapeCtrl.text = details['Şekil']?.toString() ?? '';
+
     if (details['Hayvan'] is List) {
       _animalCtrl.text = (details['Hayvan'] as List).join(', ');
+    } else {
+      _animalCtrl.text =
+          details['Hayvan']?.toString() ??
+          ''; // Liste değil düz string gelirse diye
     }
+
     if (details['Etken Madde'] is List) {
       _ingredientCtrl.text = (details['Etken Madde'] as List).join(', ');
+    } else {
+      _ingredientCtrl.text = details['Etken Madde']?.toString() ?? '';
     }
+
+    // Notları güvenli oku
+    _notesCtrl.text = localData['user_notes_on_product']?.toString() ?? '';
 
     _stockHistoryFuture = ref
         .read(productControllerProvider)
@@ -281,61 +298,57 @@ class _ProductFormDialogState extends ConsumerState<ProductFormDialog>
     final controller = ref.read(productControllerProvider);
     final isEditing = widget.product != null;
 
-    final localDetails = {
-      "details": {
-        "Grup": _groupCtrl.text.trim(),
-        "Firma": _firmCtrl.text.trim(),
-        "Şekil": _shapeCtrl.text.trim(),
-        "Hayvan":
-            _animalCtrl.text
-                .split(',')
-                .map((e) => e.trim())
-                .where((e) => e.isNotEmpty)
-                .toList(),
-        "Etken Madde":
-            _ingredientCtrl.text
-                .split(',')
-                .map((e) => e.trim())
-                .where((e) => e.isNotEmpty)
-                .toList(),
-      },
-      "user_notes_on_product": _notesCtrl.text.trim(),
+    // Sadece ham stringleri topluyoruz, JSON işini Controller yapacak.
+    final rawDetailsMap = {
+      "Grup": _groupCtrl.text.trim(),
+      "Firma": _firmCtrl.text.trim(),
+      "Şekil": _shapeCtrl.text.trim(),
+      "Hayvan":
+          _animalCtrl.text
+              .split(',')
+              .map((e) => e.trim())
+              .where((e) => e.isNotEmpty)
+              .toList(),
+      "Etken Madde":
+          _ingredientCtrl.text
+              .split(',')
+              .map((e) => e.trim())
+              .where((e) => e.isNotEmpty)
+              .toList(),
     };
 
     try {
       if (isEditing) {
-        // 🔥 GÜNCELLEME MODU
+        // GÜNCELLEME MODU
         await controller.updateProduct(
           id: widget.product!.id,
-          updates: {
-            "name": _nameCtrl.text.trim(),
-            "normalized_name":
-                _normalizedName ?? normalizeText(_nameCtrl.text.trim()),
-            // Alış ve Stok GÖNDERİLMEZ.
-            "selling_price": double.tryParse(_sellPriceCtrl.text) ?? 0,
-            "critical_stock_level":
-                double.tryParse(_criticalStockCtrl.text) ?? 10,
-            "unit_type": _selectedUnit,
-            "vat_rate": int.tryParse(_vatRateCtrl.text) ?? 0,
-            "local_details": localDetails,
-          },
+          name: _nameCtrl.text.trim(),
+          normalizedName:
+              _normalizedName ?? normalizeText(_nameCtrl.text.trim()),
+          sellingPrice: double.tryParse(_sellPriceCtrl.text) ?? 0,
+          criticalStockLevel: double.tryParse(_criticalStockCtrl.text) ?? 10,
+          unitType: _selectedUnit,
+          vatRate: int.tryParse(_vatRateCtrl.text) ?? 0,
+          detailsMap: rawDetailsMap, // Ham veriyi yolla
+          userNotes: _notesCtrl.text.trim(), // Ham notu yolla
           image: _selectedImage,
           onSuccess: () => _onSuccess("Ürün başarıyla güncellendi."),
           onError: _onError,
         );
       } else {
-        // 🔥 YENİ EKLEME MODU (Yeni controller yapısına tam uyumlu)
+        // YENİ EKLEME MODU
         await controller.createProduct(
           name: _nameCtrl.text.trim(),
           normalizedName:
               _normalizedName ?? normalizeText(_nameCtrl.text.trim()),
           barcode: _barcodeCtrl.text.trim(),
-          buyingPrice: 0, // Başlangıç her zaman 0
+          buyingPrice: 0,
           sellingPrice: double.tryParse(_sellPriceCtrl.text) ?? 0,
           unitType: _selectedUnit,
           vatRate: int.tryParse(_vatRateCtrl.text) ?? 0,
           criticalStockLevel: double.tryParse(_criticalStockCtrl.text) ?? 10,
-          localDetails: localDetails,
+          detailsMap: rawDetailsMap,
+          userNotes: _notesCtrl.text.trim(),
           vetilacImagePath:
               _selectedImage == null ? _selectedRelativePath : null,
           image: _selectedImage,

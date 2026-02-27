@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:image_picker/image_picker.dart';
@@ -14,10 +15,14 @@ class ProductRepository {
 
       final response = await _dio.get(
         ApiConstants.products,
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json; charset=utf-8',
+          },
+        ),
       );
 
-      // Gelen liste verisini tek tek Product modeline çeviriyoruz
       final List data = response.data;
       return data.map((e) => Product.fromJson(e)).toList();
     } catch (e) {
@@ -25,17 +30,18 @@ class ProductRepository {
     }
   }
 
-  // ... getProducts fonksiyonunun altı ...
-
-  // Geriye oluşturulan ürünü döndürüyoruz ki ID'sini alıp stok ekleyebilelim
   Future<Product> createProduct(
     Map<String, dynamic> productData, {
     XFile? imageFile,
   }) async {
     try {
       final token = await _storage.read(key: 'auth_token');
-
       final dataMap = Map<String, dynamic>.from(productData);
+
+      // 🔥 MUCİZE BURADA: Map olan local_details'i güvenli bir JSON String'e çeviriyoruz
+      if (dataMap['local_details'] != null) {
+        dataMap['local_details'] = jsonEncode(dataMap['local_details']);
+      }
 
       if (imageFile != null) {
         final bytes = await imageFile.readAsBytes();
@@ -50,17 +56,20 @@ class ProductRepository {
       final response = await _dio.post(
         ApiConstants.products,
         data: formData,
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+            // 🔥 DİKKAT: FormData kullanırken Content-Type manuel yazılmaz, Dio otomatik ayarlar!
+          },
+        ),
       );
 
-      // Backend response: { message: "...", product: {...} }
       return Product.fromJson(response.data['product']);
     } catch (e) {
       throw Exception("Ürün eklenirken hata oluştu: ${e.toString()}");
     }
   }
 
-  // YENİ: Stok Ekleme Metodu
   Future<void> addStock({
     required String productId,
     required double quantity,
@@ -76,9 +85,14 @@ class ProductRepository {
           "quantity": quantity,
           "expiration_date": expirationDate.toIso8601String(),
           "batch_no": batchNo,
-          "location": "Depo 1", // Varsayılan konum
+          "location": "Depo 1",
         },
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json; charset=utf-8',
+          },
+        ),
       );
     } catch (e) {
       throw Exception("Stok eklenirken hata: $e");
@@ -90,7 +104,12 @@ class ProductRepository {
       final token = await _storage.read(key: 'auth_token');
       await _dio.delete(
         '${ApiConstants.products}/$id',
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json; charset=utf-8',
+          },
+        ),
       );
     } catch (e) {
       throw Exception("Ürün silinirken hata oluştu: $e");
@@ -104,8 +123,12 @@ class ProductRepository {
   }) async {
     try {
       final token = await _storage.read(key: 'auth_token');
-
       final dataMap = Map<String, dynamic>.from(updates);
+
+      // 🔥 AYNI ZIRH BURADA DA GEÇERLİ
+      if (dataMap['local_details'] != null) {
+        dataMap['local_details'] = jsonEncode(dataMap['local_details']);
+      }
 
       if (imageFile != null) {
         final bytes = await imageFile.readAsBytes();
@@ -120,7 +143,12 @@ class ProductRepository {
       await _dio.put(
         '${ApiConstants.products}/$id',
         data: formData,
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+            // 🔥 DİKKAT: FormData kullanırken Content-Type yazmıyoruz!
+          },
+        ),
       );
     } catch (e) {
       throw Exception("Ürün güncellenirken hata oluştu: $e");
