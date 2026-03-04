@@ -39,8 +39,14 @@ class OpeningStockItemEntity {
     return {
       "product_id": productId,
       "product_source": productSource,
+      "product_name": productName,
       "quantity": quantity.toDouble(),
       "expiration_date": expirationDateStr,
+      "batch_no": batchNo ?? null,
+      "location": location ?? null,
+      "buying_price": buyingPrice.toDouble(),
+      "selling_price": sellingPrice.toDouble(),
+      "vat_rate": vatRate,
     };
   }
 

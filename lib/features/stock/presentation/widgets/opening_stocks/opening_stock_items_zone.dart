@@ -1,16 +1,14 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
-import 'package:mobile/core/theme/app_colors.dart';
-
-import 'package:mobile/core/utils/image_utils.dart';
+import 'dart:async';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:mobile/core/services/item_zone_table_view.dart';
+import 'package:mobile/core/utils/image_utils.dart';
 import 'package:mobile/features/stock/domain/entities/opening_stock_item_entity.dart';
 import '../../../../products/presentation/providers/product_provider.dart';
 import '../../../../products/presentation/providers/product_controller.dart';
 import '../../providers/opening_stock_provider.dart';
-import 'package:mobile/core/services/product_search_service.dart';
+import 'opening_stock_table_row.dart';
 
 class OpeningStockItemsZone extends ConsumerStatefulWidget {
   const OpeningStockItemsZone({super.key});
@@ -23,6 +21,15 @@ class OpeningStockItemsZone extends ConsumerStatefulWidget {
 class _OpeningStockItemsZoneState extends ConsumerState<OpeningStockItemsZone> {
   TextEditingController? _searchController;
   bool _isSearching = false;
+  Timer? _debounceTimer;
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _debounceTimer?.cancel();
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   Future<List<Map<String, dynamic>>> _searchCombinedProducts(
     String query,
@@ -32,63 +39,66 @@ class _OpeningStockItemsZoneState extends ConsumerState<OpeningStockItemsZone> {
 
     setState(() => _isSearching = true);
 
-    // 1️⃣ LOCAL MATCHES
-    final localMatches =
-        localProducts
-            .where((p) {
-              final nameMatch = p.name.toLowerCase().contains(
-                query.toLowerCase(),
-              );
-              final barcodeMatch =
-                  (p.barcode?.toLowerCase().contains(query.toLowerCase()) ??
-                      false);
+    try {
+      // LOCAL MATCHES
+      final localMatches =
+          localProducts
+              .where((p) {
+                final nameMatch = p.name.toLowerCase().contains(
+                  query.toLowerCase(),
+                );
+                final barcodeMatch =
+                    (p.barcode?.toLowerCase().contains(query.toLowerCase()) ??
+                        false);
 
-              return nameMatch || barcodeMatch;
-            })
-            .map(
-              (p) => {
-                'id': p.id,
-                'name': p.name,
-                'image_url': ImageUtils.getImageUrl(
-                  p.customImagePath,
-                  p.fullImageUrl,
-                ),
-                'source': 'local',
-              },
-            )
-            .toList();
+                return nameMatch || barcodeMatch;
+              })
+              .map(
+                (p) => {
+                  'id': p.id,
+                  'name': p.name,
+                  'image_url': ImageUtils.getImageUrl(
+                    p.customImagePath,
+                    p.fullImageUrl,
+                  ),
+                  'source': 'local',
+                },
+              )
+              .toList();
 
-    // LOCAL NAME SET (NORMALIZED)
-    final localNameSet =
-        localProducts.map((p) => p.name.toLowerCase().trim()).toSet();
+      // LOCAL NAME SET (NORMALIZED)
+      final localNameSet =
+          localProducts.map((p) => p.name.toLowerCase().trim()).toSet();
 
-    // 2️⃣ GLOBAL (VETILAC) SEARCH
-    final vetilacController = ref.read(productControllerProvider);
-    final vetilacRes = await vetilacController.searchVetilac(query);
+      // GLOBAL (VETILAC) SEARCH
+      final vetilacController = ref.read(productControllerProvider);
+      final vetilacRes = await vetilacController.searchVetilac(query);
 
-    final vetilacMatches =
-        vetilacRes
-            .where((v) {
-              final globalName = v['raw_name'].toString().toLowerCase().trim();
-              final existsLocally = localNameSet.contains(globalName);
-              return !existsLocally;
-            })
-            .map((v) {
-              return {
-                'id': v['id'],
-                'name': v['raw_name'],
-                'image_url': ImageUtils.getImageUrl(
-                  v['image_path'],
-                  v['full_image_url'],
-                ),
-                'source': 'global',
-              };
-            })
-            .toList();
+      final vetilacMatches =
+          vetilacRes
+              .where((v) {
+                final globalName =
+                    v['raw_name'].toString().toLowerCase().trim();
+                final existsLocally = localNameSet.contains(globalName);
+                return !existsLocally;
+              })
+              .map((v) {
+                return {
+                  'id': v['id'],
+                  'name': v['raw_name'],
+                  'image_url': ImageUtils.getImageUrl(
+                    v['image_path']?.toString(),
+                    v['full_image_url']?.toString(),
+                  ),
+                  'source': 'global',
+                };
+              })
+              .toList();
 
-    setState(() => _isSearching = false);
-
-    return [...localMatches, ...vetilacMatches];
+      return [...localMatches, ...vetilacMatches];
+    } finally {
+      setState(() => _isSearching = false);
+    }
   }
 
   @override
@@ -117,6 +127,7 @@ class _OpeningStockItemsZoneState extends ConsumerState<OpeningStockItemsZone> {
             ),
             const SizedBox(height: 16),
 
+            // SEARCH BAR
             Row(
               children: [
                 Expanded(
@@ -136,17 +147,6 @@ class _OpeningStockItemsZoneState extends ConsumerState<OpeningStockItemsZone> {
                       );
                       if (alreadyExists) return;
 
-                      print("DEBUG: Creating new item with selection:");
-                      print(
-                        "  - id: ${selection['id']} (type: ${selection['id'].runtimeType})",
-                      );
-                      print(
-                        "  - name: ${selection['name']} (type: ${selection['name'].runtimeType})",
-                      );
-                      print(
-                        "  - source: ${selection['source']} (type: ${selection['source'].runtimeType})",
-                      );
-
                       final newItem = OpeningStockItemEntity(
                         productId: selection['id'].toString(),
                         productName: selection['name'] ?? '',
@@ -161,7 +161,6 @@ class _OpeningStockItemsZoneState extends ConsumerState<OpeningStockItemsZone> {
                         vatRate: 0,
                       );
 
-                      print("DEBUG: New item created successfully");
                       openingNotifier.addItem(newItem);
                       _searchController?.clear();
                     },
@@ -303,6 +302,7 @@ class _OpeningStockItemsZoneState extends ConsumerState<OpeningStockItemsZone> {
 
             const SizedBox(height: 24),
 
+            // ITEMS TABLE OR EMPTY STATE
             if (openingState.items.isEmpty)
               Container(
                 width: double.infinity,
@@ -333,13 +333,24 @@ class _OpeningStockItemsZoneState extends ConsumerState<OpeningStockItemsZone> {
                   border: Border.all(color: Colors.grey.shade300),
                   borderRadius: BorderRadius.circular(12),
                 ),
+                // Fixed height container with ListView.builder for virtual scrolling
+                constraints: BoxConstraints(
+                  maxHeight:
+                      openingState.items.length > 10
+                          ? 600 // Fixed height for scrolling
+                          : double
+                              .maxFinite, // Let it grow naturally for fewer items
+                ),
                 child: SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: SizedBox(
                     width: 1100,
                     child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
+                        // TABLE HEADER (Fixed)
                         Container(
+                          height: 50,
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           decoration: BoxDecoration(
                             color: Colors.blue.withOpacity(0.1),
@@ -365,19 +376,40 @@ class _OpeningStockItemsZoneState extends ConsumerState<OpeningStockItemsZone> {
                             ],
                           ),
                         ),
-                        ...openingState.items.asMap().entries.map((entry) {
-                          final index = entry.key;
-                          final item = entry.value;
-                          return _OpeningRow(
-                            key: ValueKey(item.productId + index.toString()),
-                            item: item,
-                            index: index,
-                            onChanged:
-                                (updated) =>
-                                    openingNotifier.updateItem(index, updated),
-                            onDelete: () => openingNotifier.removeItem(index),
-                          );
-                        }).toList(),
+
+                        // TABLE ROWS (Virtualized with ListView.builder)
+                        Flexible(
+                          child: ListView.builder(
+                            controller: _scrollController,
+                            shrinkWrap: true,
+                            physics: const ClampingScrollPhysics(),
+                            itemCount: openingState.items.length,
+                            itemBuilder: (context, index) {
+                              final item = openingState.items[index];
+
+                              return OpeningStockTableRow(
+                                key: ValueKey(
+                                  item.productId,
+                                ), // Only use productId as key
+                                rowIndex: index,
+                                item: item,
+                                expirationDate: item.expirationDate,
+                                onChanged:
+                                    (updated) => openingNotifier.updateItem(
+                                      index,
+                                      updated,
+                                    ),
+                                onDelete:
+                                    () => openingNotifier.removeItem(index),
+                                onDateChanged:
+                                    (date) => openingNotifier.updateItem(
+                                      index,
+                                      item.copyWith(expirationDate: date),
+                                    ),
+                              );
+                            },
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -406,255 +438,5 @@ class _HeaderCell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return HeaderCell(title, width: width, align: align, color: color);
-  }
-}
-
-class _OpeningRow extends StatefulWidget {
-  final OpeningStockItemEntity item;
-  final int index;
-  final Function(OpeningStockItemEntity) onChanged;
-  final VoidCallback onDelete;
-
-  const _OpeningRow({
-    super.key,
-    required this.item,
-    required this.index,
-    required this.onChanged,
-    required this.onDelete,
-  });
-
-  @override
-  State<_OpeningRow> createState() => _OpeningRowState();
-}
-
-class _OpeningRowState extends State<_OpeningRow> {
-  late TextEditingController _batchCtrl;
-  late TextEditingController _qtyCtrl;
-  late TextEditingController _priceCtrl;
-  late TextEditingController _sellPriceCtrl;
-  late TextEditingController _vatCtrl;
-  late TextEditingController _locationCtrl;
-
-  @override
-  void initState() {
-    super.initState();
-    _batchCtrl = TextEditingController(text: widget.item.batchNo);
-    _qtyCtrl = TextEditingController(text: widget.item.quantity.toString());
-    _priceCtrl = TextEditingController(
-      text: widget.item.buyingPrice.toString(),
-    );
-    _sellPriceCtrl = TextEditingController(
-      text: widget.item.sellingPrice.toString(),
-    );
-    _vatCtrl = TextEditingController(text: widget.item.vatRate.toString());
-    _locationCtrl = TextEditingController(text: widget.item.location ?? '');
-  }
-
-  void _updateItem() {
-    print("DEBUG _updateItem: Current values");
-    print("  - batchNo: ${_batchCtrl.text}");
-    print(
-      "  - quantity: ${_qtyCtrl.text} -> ${double.tryParse(_qtyCtrl.text) ?? 0}",
-    );
-    print(
-      "  - buyingPrice: ${_priceCtrl.text} -> ${double.tryParse(_priceCtrl.text) ?? 0}",
-    );
-    print(
-      "  - sellingPrice: ${_sellPriceCtrl.text} -> ${double.tryParse(_sellPriceCtrl.text) ?? 0}",
-    );
-    print(
-      "  - vatRate (raw): ${_vatCtrl.text} (type: ${_vatCtrl.text.runtimeType})",
-    );
-    final parsedVat = int.tryParse(_vatCtrl.text) ?? 0;
-    print("  - vatRate (parsed): $parsedVat (type: ${parsedVat.runtimeType})");
-    print("  - location: ${_locationCtrl.text}");
-
-    final updated = widget.item.copyWith(
-      batchNo: _batchCtrl.text,
-      quantity: double.tryParse(_qtyCtrl.text) ?? 0.0,
-      buyingPrice: double.tryParse(_priceCtrl.text) ?? 0.0,
-      sellingPrice: double.tryParse(_sellPriceCtrl.text) ?? 0.0,
-      vatRate: parsedVat,
-      location: _locationCtrl.text,
-    );
-    print("DEBUG: Item updated successfully");
-    widget.onChanged(updated);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final bgColor =
-        widget.index % 2 == 0
-            ? Colors.white
-            : Color.fromARGB(40, 250, 250, 250);
-    return Container(
-      decoration: BoxDecoration(
-        color: bgColor,
-        border: Border(bottom: BorderSide(color: Colors.grey.shade300)),
-      ),
-      child: IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _buildCell(
-              width: 70,
-              child: Center(
-                child: Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: Colors.grey.shade300),
-                  ),
-                  child:
-                      widget.item.imageUrl != null
-                          ? ClipRRect(
-                            borderRadius: BorderRadius.circular(6),
-                            child: CachedNetworkImage(
-                              imageUrl: widget.item.imageUrl!,
-                              fit: BoxFit.cover,
-                              placeholder:
-                                  (c, u) => const Padding(
-                                    padding: EdgeInsets.all(8.0),
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  ),
-                              errorWidget:
-                                  (c, u, e) => const Icon(
-                                    Icons.broken_image,
-                                    size: 16,
-                                    color: Colors.grey,
-                                  ),
-                            ),
-                          )
-                          : const Icon(
-                            Icons.medication,
-                            size: 20,
-                            color: Colors.grey,
-                          ),
-                ),
-              ),
-            ),
-            _buildCell(
-              width: 190,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  vertical: 8.0,
-                  horizontal: 4.0,
-                ),
-                child: Text(
-                  widget.item.productName,
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13,
-                  ),
-                ),
-              ),
-            ),
-            _buildCell(
-              width: 120,
-              child: Center(child: _buildCompactInput(_batchCtrl, "Parti")),
-            ),
-            _buildCell(
-              width: 120,
-              child: Center(child: _buildDateSelector(context)),
-            ),
-            _buildCell(
-              width: 70,
-              child: Center(child: _buildCompactInput(_qtyCtrl, "Adet")),
-            ),
-            _buildCell(
-              width: 90,
-              child: Center(child: _buildCompactInput(_priceCtrl, "₺")),
-            ),
-            _buildCell(
-              width: 90,
-              child: Center(child: _buildCompactInput(_sellPriceCtrl, "₺")),
-            ),
-            _buildCell(
-              width: 70,
-              child: Center(child: _buildCompactInput(_vatCtrl, "%")),
-            ),
-            _buildCell(
-              width: 90,
-              child: Center(child: _buildCompactInput(_locationCtrl, "")),
-            ),
-            _buildCell(
-              width: 50,
-              showBorder: false,
-              child: Center(
-                child: IconButton(
-                  icon: const Icon(
-                    Icons.delete_outline,
-                    color: Colors.red,
-                    size: 20,
-                  ),
-                  onPressed: widget.onDelete,
-                  tooltip: "Satırı Sil",
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCell({
-    required double width,
-    required Widget child,
-    bool showBorder = true,
-  }) {
-    return ItemTableCell(width: width, child: child, showBorder: showBorder);
-  }
-
-  Widget _buildCompactInput(
-    TextEditingController ctrl,
-    String hint, {
-    bool isHighlight = false,
-  }) {
-    return CompactInput(
-      controller: ctrl,
-      hint: hint,
-      onChanged: (_) => _updateItem(),
-      highlight: isHighlight,
-    );
-  }
-
-  Widget _buildDateSelector(BuildContext context) {
-    final dateStr = DateFormat('dd.MM.yyyy').format(widget.item.expirationDate);
-    return InkWell(
-      onTap: () async {
-        final date = await showDatePicker(
-          context: context,
-          initialDate: widget.item.expirationDate,
-          firstDate: DateTime.now(),
-          lastDate: DateTime.now().add(const Duration(days: 3650)),
-        );
-        if (date != null)
-          widget.onChanged(widget.item.copyWith(expirationDate: date));
-      },
-      child: Container(
-        height: 32,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border.all(color: Colors.grey.shade300),
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Text(
-          dateStr,
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w500,
-            color: Colors.black87,
-          ),
-        ),
-      ),
-    );
   }
 }

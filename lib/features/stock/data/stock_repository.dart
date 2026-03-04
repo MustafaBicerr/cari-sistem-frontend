@@ -63,9 +63,20 @@ class StockRepository {
     try {
       final token = await _storage.read(key: 'auth_token');
 
-      // print("DEBUG StockRepository: Sending POST to /opening-stock");
-      // print("DEBUG StockRepository: Payload type: ${payload.runtimeType}");
-      // print("DEBUG StockRepository: Full payload: $payload");
+      print("DEBUG StockRepository: Sending POST to /stock/opening");
+      try {
+        print(
+          "DEBUG StockRepository: Full URL: ${_dio.options.baseUrl}/stock/opening",
+        );
+      } catch (e) {
+        // ignore
+      }
+      print("DEBUG StockRepository: Payload type: ${payload.runtimeType}");
+      try {
+        print("DEBUG StockRepository: Full payload: ${payload.toString()}");
+      } catch (e) {
+        print("DEBUG StockRepository: Failed to stringify payload: $e");
+      }
 
       final response = await _dio.post(
         '/stock/opening', // Backend endpoint
@@ -73,11 +84,15 @@ class StockRepository {
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
 
-      // print("DEBUG StockRepository: Response status: ${response.statusCode}");
-      // print(
-      //   "DEBUG StockRepository: Response data type: ${response.data.runtimeType}",
-      // );
-      // print("DEBUG StockRepository: Response data: ${response.data}");
+      print("DEBUG StockRepository: Response status: ${response.statusCode}");
+      try {
+        print(
+          "DEBUG StockRepository: Response data type: ${response.data.runtimeType}",
+        );
+        print("DEBUG StockRepository: Response data: ${response.data}");
+      } catch (e) {
+        print("DEBUG StockRepository: Failed to print response data: $e");
+      }
 
       return response.data; // { message: "...", entry: {...} }
     } on DioException catch (e) {
