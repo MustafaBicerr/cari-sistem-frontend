@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:mobile/features/stock/presentation/screens/opening_stock_screen.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../providers/purchase_form_provider.dart';
-import 'supplier_autocomplete.dart'; // Bir sonraki adımda vereceğim
+import 'supplier_autocomplete.dart';
 
 class PurchaseHeaderZone extends ConsumerWidget {
   const PurchaseHeaderZone({super.key});
@@ -13,28 +14,61 @@ class PurchaseHeaderZone extends ConsumerWidget {
     final state = ref.watch(purchaseFormProvider);
     final notifier = ref.read(purchaseFormProvider.notifier);
 
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: Colors.grey.shade300),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
       ),
       child: Padding(
         padding: const EdgeInsets.all(24.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Row(
+            IconButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => OpeningStockScreen()),
+                );
+              },
+              icon: Icon(
+                Icons.close_fullscreen,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            Row(
               children: [
-                Icon(Icons.receipt_long, color: AppColors.primary),
-                SizedBox(width: 8),
+                Container(
+                  padding: EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.background,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.receipt_long,
+                    color: AppColors.primary,
+                    size: 24,
+                  ),
+                ),
+                SizedBox(width: 12),
                 Text(
-                  "Fatura & Tedarikçi Bilgileri",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  "Evrak Bilgileri",
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
+                  ),
                 ),
               ],
             ),
-            const Divider(height: 32),
+            const Divider(height: 32, color: AppColors.background),
 
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -45,42 +79,37 @@ class PurchaseHeaderZone extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const SupplierAutocomplete(), // Tedarikçi Arama Kutusu
-                      const SizedBox(height: 16),
-                      TextFormField(
+                      const SupplierAutocomplete(), // Tedarikçi Arama (Modern)
+                      const SizedBox(height: 20),
+                      _buildModernInput(
+                        label: "Fatura Notu (Opsiyonel)",
+                        hint: "Faturayla ilgili eklemek istedikleriniz...",
+                        icon: Icons.notes,
                         initialValue: state.note,
                         onChanged: notifier.updateNote,
-                        maxLines: 2,
-                        decoration: InputDecoration(
-                          labelText: "Fatura Notu (Opsiyonel)",
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
+                        maxLines: 3,
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(width: 32),
-
+                const SizedBox(width: 48), // Geniş ekranlar için ferahlık
                 // SAĞ TARAF: TARİH VE NUMARA
                 Expanded(
                   flex: 1,
                   child: Column(
                     children: [
-                      TextFormField(
+                      _buildModernInput(
+                        label: "Fatura Numarası *",
+                        hint: "Örn: GİB2026...",
+                        icon: Icons.tag,
                         initialValue: state.invoiceNo,
                         onChanged: notifier.updateInvoiceNo,
-                        decoration: InputDecoration(
-                          labelText: "Fatura Numarası *",
-                          prefixIcon: const Icon(Icons.tag),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
                       ),
-                      const SizedBox(height: 16),
-                      TextFormField(
+                      const SizedBox(height: 20),
+                      _buildModernInput(
+                        label: "Fatura Tarihi *",
+                        hint: "Seçiniz",
+                        icon: Icons.calendar_today,
                         readOnly: true,
                         controller: TextEditingController(
                           text: DateFormat(
@@ -96,16 +125,12 @@ class PurchaseHeaderZone extends ConsumerWidget {
                           );
                           if (date != null) notifier.updateInvoiceDate(date);
                         },
-                        decoration: InputDecoration(
-                          labelText: "Fatura Tarihi *",
-                          prefixIcon: const Icon(Icons.calendar_today),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
                       ),
-                      const SizedBox(height: 16),
-                      TextFormField(
+                      const SizedBox(height: 20),
+                      _buildModernInput(
+                        label: "Vade Tarihi (Opsiyonel)",
+                        hint: "Belirtilmedi",
+                        icon: Icons.event_available,
                         readOnly: true,
                         controller: TextEditingController(
                           text:
@@ -126,13 +151,6 @@ class PurchaseHeaderZone extends ConsumerWidget {
                           );
                           if (date != null) notifier.updateDueDate(date);
                         },
-                        decoration: InputDecoration(
-                          labelText: "Vade Tarihi (Opsiyonel)",
-                          prefixIcon: const Icon(Icons.event_available),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
                       ),
                     ],
                   ),
@@ -142,6 +160,78 @@ class PurchaseHeaderZone extends ConsumerWidget {
           ],
         ),
       ),
+    );
+  }
+
+  // 🔥 MODERN INPUT MİMARİSİ (SaaS Standardı)
+  Widget _buildModernInput({
+    required String label,
+    required String hint,
+    required IconData icon,
+    TextEditingController? controller,
+    String? initialValue,
+    Function(String)? onChanged,
+    VoidCallback? onTap,
+    bool readOnly = false,
+    int maxLines = 1,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 6),
+          child: Text(
+            label,
+            style: const TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 13,
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ),
+        TextFormField(
+          controller: controller,
+          initialValue: initialValue,
+          onChanged: onChanged,
+          onTap: onTap,
+          readOnly: readOnly,
+          maxLines: maxLines,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: AppColors.textPrimary,
+          ),
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
+            prefixIcon:
+                maxLines > 1
+                    ? null
+                    : Icon(icon, color: AppColors.primary, size: 20),
+            filled: true,
+            fillColor: Colors.grey.shade50, // Yumuşak arka plan
+            contentPadding: EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: maxLines > 1 ? 16 : 0,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide.none,
+            ), // Kenarlık yok
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: Colors.grey.shade200, width: 1),
+            ), // Çok hafif çerçeve
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(
+                color: AppColors.primary,
+                width: 1.5,
+              ),
+            ), // Focuslanınca net çerçeve
+          ),
+        ),
+      ],
     );
   }
 }

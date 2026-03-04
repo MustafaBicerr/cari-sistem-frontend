@@ -2,59 +2,37 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:mobile/core/utils/image_utils.dart';
-import '../../../../../core/constants/api_constants.dart';
-import '../../../../../core/theme/app_colors.dart';
-import '../../../../products/domain/models/product.dart';
-import '../../../../products/presentation/providers/product_controller.dart';
-import '../../../../products/presentation/providers/product_provider.dart';
-import '../../../../products/presentation/widgets/product_form_dialog.dart';
-import '../../providers/purchase_form_provider.dart';
+import 'package:mobile/core/theme/app_colors.dart';
 
-class PurchaseItemsZone extends ConsumerStatefulWidget {
-  const PurchaseItemsZone({super.key});
+import 'package:mobile/core/utils/image_utils.dart';
+import 'package:mobile/core/services/item_zone_table_view.dart';
+import 'package:mobile/features/stock/domain/entities/opening_stock_item_entity.dart';
+import '../../../../products/presentation/providers/product_provider.dart';
+import '../../../../products/presentation/providers/product_controller.dart';
+import '../../providers/opening_stock_provider.dart';
+import 'package:mobile/core/services/product_search_service.dart';
+
+class OpeningStockItemsZone extends ConsumerStatefulWidget {
+  const OpeningStockItemsZone({super.key});
 
   @override
-  ConsumerState<PurchaseItemsZone> createState() => _PurchaseItemsZoneState();
+  ConsumerState<OpeningStockItemsZone> createState() =>
+      _OpeningStockItemsZoneState();
 }
 
-class _PurchaseItemsZoneState extends ConsumerState<PurchaseItemsZone> {
+class _OpeningStockItemsZoneState extends ConsumerState<OpeningStockItemsZone> {
   TextEditingController? _searchController;
   bool _isSearching = false;
 
-  // // ----------------------------------------------------------
-  // // IMAGE URL BUILDER
-  // // ----------------------------------------------------------
-  // String? _getImageUrl(String? path, String? fullUrl) {
-  //   if (fullUrl != null && fullUrl.isNotEmpty) return fullUrl;
-  //   if (path != null && path.isNotEmpty) {
-  //     if (path.startsWith('http')) return path;
-  //     final baseUrl = ApiConstants.baseUrl.replaceAll('/api', '');
-  //     final normalizedPath = path.startsWith('/') ? path : '/$path';
-  //     return '$baseUrl$normalizedPath';
-  //   }
-  //   return null;
-  // }
-
-  // ----------------------------------------------------------
-  // COMBINED SEARCH (LOCAL + GLOBAL)
-  // ----------------------------------------------------------
   Future<List<Map<String, dynamic>>> _searchCombinedProducts(
     String query,
-    List<Product> localProducts,
+    List<dynamic> localProducts,
   ) async {
-    // print("=====================================");
-    // print("🔍 SEARCH QUERY: $query");
-    // print("LOCAL PRODUCTS COUNT: ${localProducts.length}");
-    // print("=====================================");
-
-    if (query.isEmpty) return [];
+    if (query.trim().isEmpty) return [];
 
     setState(() => _isSearching = true);
 
-    // ------------------------------------------------------
     // 1️⃣ LOCAL MATCHES
-    // ------------------------------------------------------
     final localMatches =
         localProducts
             .where((p) {
@@ -71,9 +49,6 @@ class _PurchaseItemsZoneState extends ConsumerState<PurchaseItemsZone> {
               (p) => {
                 'id': p.id,
                 'name': p.name,
-                'buy_price': p.buyingPrice,
-                'sell_price': p.sellingPrice,
-                'tax_rate': p.vatRate,
                 'image_url': ImageUtils.getImageUrl(
                   p.customImagePath,
                   p.fullImageUrl,
@@ -83,53 +58,25 @@ class _PurchaseItemsZoneState extends ConsumerState<PurchaseItemsZone> {
             )
             .toList();
 
-    // print("🟢 LOCAL MATCHES (${localMatches.length})");
-    // for (var p in localMatches) {
-    //   print(
-    //     "   → ${p['id']} | ${p['name']} | Buy:${p['buy_price']} | Sell:${p['sell_price']}",
-    //   );
-    // }
-
-    // final localIds = localMatches.map((p) => p['id'].toString()).toSet();
-    // ------------------------------------------------------
     // LOCAL NAME SET (NORMALIZED)
-    // ------------------------------------------------------
     final localNameSet =
         localProducts.map((p) => p.name.toLowerCase().trim()).toSet();
 
-    print("🧠 LOCAL NAME SET:");
-    for (var name in localNameSet) {
-      print("   → $name");
-    }
-
-    // ------------------------------------------------------
     // 2️⃣ GLOBAL (VETILAC) SEARCH
-    // ------------------------------------------------------
     final vetilacController = ref.read(productControllerProvider);
     final vetilacRes = await vetilacController.searchVetilac(query);
-
-    print("☁️ GLOBAL RAW RESULT (${vetilacRes.length})");
 
     final vetilacMatches =
         vetilacRes
             .where((v) {
               final globalName = v['raw_name'].toString().toLowerCase().trim();
-
               final existsLocally = localNameSet.contains(globalName);
-
-              print("🔎 GLOBAL CHECK BY NAME:");
-              print("   Global Name: $globalName");
-              print("   Exists Local: $existsLocally");
-
               return !existsLocally;
             })
             .map((v) {
               return {
                 'id': v['id'],
                 'name': v['raw_name'],
-                'buy_price': 0.0,
-                'sell_price': 0.0,
-                'tax_rate': 10.0,
                 'image_url': ImageUtils.getImageUrl(
                   v['image_path'],
                   v['full_image_url'],
@@ -146,33 +93,18 @@ class _PurchaseItemsZoneState extends ConsumerState<PurchaseItemsZone> {
 
   @override
   Widget build(BuildContext context) {
-    final purchaseState = ref.watch(purchaseFormProvider);
-    final purchaseNotifier = ref.read(purchaseFormProvider.notifier);
+    final openingState = ref.watch(openingStockProvider);
+    final openingNotifier = ref.read(openingStockProvider.notifier);
 
-    // ----------------------------------------------------------
-    // PRODUCT LIST PROVIDER (SADECE BUILD İÇİNDE WATCH)
-    // ----------------------------------------------------------
     final productListState = ref.watch(productListProvider);
-
-    print("=====================================");
-    print("📦 BUILD → productListProvider");
-    print("   isLoading: ${productListState.isLoading}");
-    print("   hasValue: ${productListState.hasValue}");
-    print("   hasError: ${productListState.hasError}");
-
     final localProducts = productListState.value ?? [];
-
-    print("   TOTAL LOCAL PRODUCTS: ${localProducts.length}");
-    for (var p in localProducts) {
-      print("      → ${p.id} | ${p.name}");
-    }
-    print("=====================================");
 
     return Card(
       elevation: 0,
+      color: Colors.blue.shade100.withOpacity(0.3),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: Colors.grey.shade300),
+        side: BorderSide(color: Colors.black12),
       ),
       child: Padding(
         padding: const EdgeInsets.all(24.0),
@@ -180,14 +112,11 @@ class _PurchaseItemsZoneState extends ConsumerState<PurchaseItemsZone> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              "Fatura Kalemleri",
+              "Ürünler",
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
 
-            // ------------------------------------------------------
-            // ÜRÜN ARAMA
-            // ------------------------------------------------------
             Row(
               children: [
                 Expanded(
@@ -198,41 +127,42 @@ class _PurchaseItemsZoneState extends ConsumerState<PurchaseItemsZone> {
                         localProducts,
                       );
                     },
-                    displayStringForOption: (option) => option['name'],
+                    displayStringForOption: (option) => option['name'] ?? '',
                     onSelected: (selection) {
-                      final alreadyExists = purchaseState.items.any(
+                      final alreadyExists = openingState.items.any(
                         (item) =>
                             item.productId.toString() ==
                             selection['id'].toString(),
                       );
+                      if (alreadyExists) return;
 
-                      print("🧠 DUPLICATE CHECK: $alreadyExists");
-
-                      if (alreadyExists) {
-                        print("❌ Ürün zaten faturada mevcut!");
-                        return;
-                      }
-
-                      print("=====================================");
-                      print("🟡 PRODUCT SELECTED");
-                      print("ID: ${selection['id']}");
-                      print("Name: ${selection['name']}");
-                      print("Source: ${selection['source']}");
-                      print("Buy Price: ${selection['buy_price']}");
-                      print("Sell Price: ${selection['sell_price']}");
-                      print("Tax Rate: ${selection['tax_rate']}");
-                      print("=====================================");
-
-                      purchaseNotifier.addItem(
-                        selection['id'],
-                        selection['name'],
-                        selection['buy_price'],
-                        selection['sell_price'],
-                        selection['tax_rate'],
-                        selection['source'],
-                        selection['image_url'],
+                      print("DEBUG: Creating new item with selection:");
+                      print(
+                        "  - id: ${selection['id']} (type: ${selection['id'].runtimeType})",
+                      );
+                      print(
+                        "  - name: ${selection['name']} (type: ${selection['name'].runtimeType})",
+                      );
+                      print(
+                        "  - source: ${selection['source']} (type: ${selection['source'].runtimeType})",
                       );
 
+                      final newItem = OpeningStockItemEntity(
+                        productId: selection['id'].toString(),
+                        productName: selection['name'] ?? '',
+                        imageUrl: selection['image_url'],
+                        productSource: selection['source'] ?? 'local',
+                        quantity: 1.0,
+                        expirationDate: DateTime.now(),
+                        batchNo: '',
+                        location: '',
+                        buyingPrice: 0.0,
+                        sellingPrice: 0.0,
+                        vatRate: 0,
+                      );
+
+                      print("DEBUG: New item created successfully");
+                      openingNotifier.addItem(newItem);
                       _searchController?.clear();
                     },
                     fieldViewBuilder: (
@@ -242,16 +172,12 @@ class _PurchaseItemsZoneState extends ConsumerState<PurchaseItemsZone> {
                       onFieldSubmitted,
                     ) {
                       _searchController = controller;
-
                       return TextFormField(
                         controller: controller,
                         focusNode: focusNode,
                         decoration: InputDecoration(
-                          labelText: "Barkod okutun veya Ürün Adı yazın...",
-                          prefixIcon: const Icon(
-                            Icons.search,
-                            color: AppColors.primary,
-                          ),
+                          labelText: "Barkod okutun veya ürün adı...",
+                          prefixIcon: const Icon(Icons.search),
                           suffixIcon:
                               _isSearching
                                   ? const Padding(
@@ -264,8 +190,6 @@ class _PurchaseItemsZoneState extends ConsumerState<PurchaseItemsZone> {
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          filled: true,
-                          fillColor: AppColors.background,
                         ),
                       );
                     },
@@ -290,8 +214,8 @@ class _PurchaseItemsZoneState extends ConsumerState<PurchaseItemsZone> {
                                       const Divider(height: 1, indent: 70),
                               itemBuilder: (context, index) {
                                 final option = options.elementAt(index);
-                                final isLocal = option['source'] == 'local';
                                 final imgUrl = option['image_url'];
+                                final isLocal = option['source'] == 'local';
 
                                 return ListTile(
                                   contentPadding: const EdgeInsets.symmetric(
@@ -332,14 +256,14 @@ class _PurchaseItemsZoneState extends ConsumerState<PurchaseItemsZone> {
                                             )
                                             : const Icon(
                                               Icons.medication,
-                                              color: AppColors.primary,
+                                              color: Colors.grey,
                                             ),
                                   ),
                                   title: Row(
                                     children: [
                                       Expanded(
                                         child: Text(
-                                          option['name'],
+                                          option['name'] ?? '',
                                           style: const TextStyle(
                                             fontWeight: FontWeight.bold,
                                             fontSize: 15,
@@ -353,8 +277,8 @@ class _PurchaseItemsZoneState extends ConsumerState<PurchaseItemsZone> {
                                         size: 16,
                                         color:
                                             isLocal
-                                                ? AppColors.success
-                                                : AppColors.primary,
+                                                ? Colors.green
+                                                : Colors.blue,
                                       ),
                                     ],
                                   ),
@@ -374,41 +298,12 @@ class _PurchaseItemsZoneState extends ConsumerState<PurchaseItemsZone> {
                     },
                   ),
                 ),
-                const SizedBox(width: 16),
-
-                // ------------------------------------------------------
-                // YENİ ÜRÜN BUTONU
-                // ------------------------------------------------------
-                SizedBox(
-                  height: 55,
-                  child: ElevatedButton.icon(
-                    onPressed: () async {
-                      await showDialog(
-                        context: context,
-                        builder: (context) => const ProductFormDialog(),
-                      );
-                      ref.invalidate(productListProvider);
-                    },
-                    icon: const Icon(Icons.add_box),
-                    label: const Text("Yeni İlaç Tanımla"),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  ),
-                ),
               ],
             ),
 
             const SizedBox(height: 24),
 
-            // ------------------------------------------------------
-            // TABLO (DEĞİŞMEDİ)
-            // ------------------------------------------------------
-            if (purchaseState.items.isEmpty)
+            if (openingState.items.isEmpty)
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(32),
@@ -426,7 +321,7 @@ class _PurchaseItemsZoneState extends ConsumerState<PurchaseItemsZone> {
                     ),
                     SizedBox(height: 8),
                     Text(
-                      "Faturaya henüz ürün eklenmedi.",
+                      "Henüz ürün eklenmedi.",
                       style: TextStyle(color: Colors.grey),
                     ),
                   ],
@@ -441,13 +336,13 @@ class _PurchaseItemsZoneState extends ConsumerState<PurchaseItemsZone> {
                 child: SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: SizedBox(
-                    width: 1050,
+                    width: 1100,
                     child: Column(
                       children: [
                         Container(
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           decoration: BoxDecoration(
-                            color: AppColors.primary.withOpacity(0.1),
+                            color: Colors.blue.withOpacity(0.1),
                             borderRadius: const BorderRadius.vertical(
                               top: Radius.circular(11),
                             ),
@@ -459,43 +354,28 @@ class _PurchaseItemsZoneState extends ConsumerState<PurchaseItemsZone> {
                             children: [
                               _HeaderCell("Fotoğraf", width: 70),
                               _HeaderCell("Ürün Adı", width: 190),
-                              _HeaderCell("Parti\nSKT", width: 120),
-                              _HeaderCell("Miktar", width: 70),
-                              _HeaderCell("Mal Fazlası", width: 70),
+                              _HeaderCell("Parti No", width: 120),
+                              _HeaderCell("SKT", width: 120),
+                              _HeaderCell("Adet", width: 70),
                               _HeaderCell("Alış Fiyatı (₺)", width: 90),
-                              _HeaderCell(
-                                "Satış Fiyatı (₺)",
-                                width: 90,
-                                color: Colors.deepOrange,
-                              ),
-                              _HeaderCell(
-                                "İskontolar (%) (1, 2, 3)",
-                                width: 90,
-                              ),
+                              _HeaderCell("Satış Fiyatı (₺)", width: 90),
                               _HeaderCell("KDV (%)", width: 70),
-                              _HeaderCell(
-                                "Net Toplam",
-                                width: 110,
-                                align: TextAlign.right,
-                              ),
+                              _HeaderCell("Konum", width: 90),
                               _HeaderCell("", width: 50),
                             ],
                           ),
                         ),
-                        ...purchaseState.items.asMap().entries.map((entry) {
+                        ...openingState.items.asMap().entries.map((entry) {
                           final index = entry.key;
                           final item = entry.value;
-                          return _PurchaseItemRow(
-                            key: ValueKey(item.uiId),
+                          return _OpeningRow(
+                            key: ValueKey(item.productId + index.toString()),
                             item: item,
                             index: index,
                             onChanged:
-                                (updatedItem) => purchaseNotifier.updateItem(
-                                  item.uiId,
-                                  updatedItem,
-                                ),
-                            onDelete:
-                                () => purchaseNotifier.removeItem(item.uiId),
+                                (updated) =>
+                                    openingNotifier.updateItem(index, updated),
+                            onDelete: () => openingNotifier.removeItem(index),
                           );
                         }).toList(),
                       ],
@@ -510,7 +390,6 @@ class _PurchaseItemsZoneState extends ConsumerState<PurchaseItemsZone> {
   }
 }
 
-// BAŞLIK HÜCRESİ WIDGET'I
 class _HeaderCell extends StatelessWidget {
   final String title;
   final double width;
@@ -526,33 +405,17 @@ class _HeaderCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: width,
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      decoration: BoxDecoration(
-        border: Border(right: BorderSide(color: Colors.grey.shade300)),
-      ),
-      child: Text(
-        title,
-        textAlign: TextAlign.left,
-        style: TextStyle(
-          fontWeight: FontWeight.bold,
-          fontSize: 13,
-          color: color ?? Colors.black87,
-        ),
-      ),
-    );
+    return HeaderCell(title, width: width, align: align, color: color);
   }
 }
 
-// --- SATIR WIDGET'I ---
-class _PurchaseItemRow extends StatefulWidget {
-  final PurchaseItemState item;
+class _OpeningRow extends StatefulWidget {
+  final OpeningStockItemEntity item;
   final int index;
-  final Function(PurchaseItemState) onChanged;
+  final Function(OpeningStockItemEntity) onChanged;
   final VoidCallback onDelete;
 
-  const _PurchaseItemRow({
+  const _OpeningRow({
     super.key,
     required this.item,
     required this.index,
@@ -561,73 +424,78 @@ class _PurchaseItemRow extends StatefulWidget {
   });
 
   @override
-  State<_PurchaseItemRow> createState() => _PurchaseItemRowState();
+  State<_OpeningRow> createState() => _OpeningRowState();
 }
 
-class _PurchaseItemRowState extends State<_PurchaseItemRow> {
+class _OpeningRowState extends State<_OpeningRow> {
   late TextEditingController _batchCtrl;
   late TextEditingController _qtyCtrl;
-  late TextEditingController _freeQtyCtrl;
   late TextEditingController _priceCtrl;
   late TextEditingController _sellPriceCtrl;
-  late TextEditingController _disc1Ctrl;
-  late TextEditingController _disc2Ctrl;
-  late TextEditingController _disc3Ctrl;
-  late TextEditingController _taxCtrl;
+  late TextEditingController _vatCtrl;
+  late TextEditingController _locationCtrl;
 
   @override
   void initState() {
     super.initState();
     _batchCtrl = TextEditingController(text: widget.item.batchNo);
     _qtyCtrl = TextEditingController(text: widget.item.quantity.toString());
-    _freeQtyCtrl = TextEditingController(
-      text: widget.item.freeQuantity.toString(),
+    _priceCtrl = TextEditingController(
+      text: widget.item.buyingPrice.toString(),
     );
-    _priceCtrl = TextEditingController(text: widget.item.unitPrice.toString());
     _sellPriceCtrl = TextEditingController(
       text: widget.item.sellingPrice.toString(),
     );
-    _disc1Ctrl = TextEditingController(text: widget.item.discount1.toString());
-    _disc2Ctrl = TextEditingController(text: widget.item.discount2.toString());
-    _disc3Ctrl = TextEditingController(text: widget.item.discount3.toString());
-    _taxCtrl = TextEditingController(text: widget.item.taxRate.toString());
+    _vatCtrl = TextEditingController(text: widget.item.vatRate.toString());
+    _locationCtrl = TextEditingController(text: widget.item.location ?? '');
   }
 
   void _updateItem() {
+    print("DEBUG _updateItem: Current values");
+    print("  - batchNo: ${_batchCtrl.text}");
+    print(
+      "  - quantity: ${_qtyCtrl.text} -> ${double.tryParse(_qtyCtrl.text) ?? 0}",
+    );
+    print(
+      "  - buyingPrice: ${_priceCtrl.text} -> ${double.tryParse(_priceCtrl.text) ?? 0}",
+    );
+    print(
+      "  - sellingPrice: ${_sellPriceCtrl.text} -> ${double.tryParse(_sellPriceCtrl.text) ?? 0}",
+    );
+    print(
+      "  - vatRate (raw): ${_vatCtrl.text} (type: ${_vatCtrl.text.runtimeType})",
+    );
+    final parsedVat = int.tryParse(_vatCtrl.text) ?? 0;
+    print("  - vatRate (parsed): $parsedVat (type: ${parsedVat.runtimeType})");
+    print("  - location: ${_locationCtrl.text}");
+
     final updated = widget.item.copyWith(
       batchNo: _batchCtrl.text,
-      quantity: double.tryParse(_qtyCtrl.text) ?? 0,
-      freeQuantity: double.tryParse(_freeQtyCtrl.text) ?? 0,
-      unitPrice: double.tryParse(_priceCtrl.text) ?? 0,
-      sellingPrice: double.tryParse(_sellPriceCtrl.text) ?? 0,
-      discount1: double.tryParse(_disc1Ctrl.text) ?? 0,
-      discount2: double.tryParse(_disc2Ctrl.text) ?? 0,
-      discount3: double.tryParse(_disc3Ctrl.text) ?? 0,
-      taxRate: double.tryParse(_taxCtrl.text) ?? 0,
+      quantity: double.tryParse(_qtyCtrl.text) ?? 0.0,
+      buyingPrice: double.tryParse(_priceCtrl.text) ?? 0.0,
+      sellingPrice: double.tryParse(_sellPriceCtrl.text) ?? 0.0,
+      vatRate: parsedVat,
+      location: _locationCtrl.text,
     );
+    print("DEBUG: Item updated successfully");
     widget.onChanged(updated);
   }
 
   @override
   Widget build(BuildContext context) {
-    // 🔥 Zebra Desen Rengi
     final bgColor =
         widget.index % 2 == 0
             ? Colors.white
-            : const Color.fromARGB(40, 250, 250, 250);
-
+            : Color.fromARGB(40, 250, 250, 250);
     return Container(
       decoration: BoxDecoration(
         color: bgColor,
         border: Border(bottom: BorderSide(color: Colors.grey.shade300)),
       ),
       child: IntrinsicHeight(
-        // 🔥 Satır yüksekliğini en uzun hücreye göre eşitler
         child: Row(
-          crossAxisAlignment:
-              CrossAxisAlignment.stretch, // İçerikleri dikeyde ortala/yay
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // 1. FOTOĞRAF (Genişlik: 60)
             _buildCell(
               width: 70,
               child: Center(
@@ -669,8 +537,6 @@ class _PurchaseItemRowState extends State<_PurchaseItemRow> {
                 ),
               ),
             ),
-
-            // 2. ÜRÜN ADI (Genişlik: 200, Alt satıra inebilir)
             _buildCell(
               width: 190,
               child: Padding(
@@ -689,97 +555,37 @@ class _PurchaseItemRowState extends State<_PurchaseItemRow> {
                 ),
               ),
             ),
-
-            // 3. PARTİ NO & SKT (Genişlik: 120, Alt alta)
             _buildCell(
               width: 120,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _buildCompactInput(_batchCtrl, "Parti No"),
-                    const SizedBox(height: 6),
-                    _buildDateSelector(context),
-                  ],
-                ),
-              ),
+              child: Center(child: _buildCompactInput(_batchCtrl, "Parti")),
             ),
-
-            // 4. MİKTAR (70)
+            _buildCell(
+              width: 120,
+              child: Center(child: _buildDateSelector(context)),
+            ),
             _buildCell(
               width: 70,
               child: Center(child: _buildCompactInput(_qtyCtrl, "Adet")),
             ),
-
-            // 5. BEDAVA (70)
-            _buildCell(
-              width: 70,
-              child: Center(child: _buildCompactInput(_freeQtyCtrl, "Bedava")),
-            ),
-
-            // 6. BİRİM FİYAT (90)
             _buildCell(
               width: 90,
               child: Center(child: _buildCompactInput(_priceCtrl, "₺")),
             ),
-
-            // 7. SATIŞ FİYATI (90)
             _buildCell(
               width: 90,
-              child: Center(
-                child: _buildCompactInput(
-                  _sellPriceCtrl,
-                  "₺",
-                  isHighlight: true,
-                ),
-              ),
+              child: Center(child: _buildCompactInput(_sellPriceCtrl, "₺")),
             ),
-
-            // 8. İSKONTOLAR (90) - 🔥 İŞTE BURASI: 3'ü alt alta!
-            _buildCell(
-              width: 90,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _buildCompactInput(_disc1Ctrl, "İsk1 %"),
-                    const SizedBox(height: 4),
-                    _buildCompactInput(_disc2Ctrl, "İsk2 %"),
-                    const SizedBox(height: 4),
-                    _buildCompactInput(_disc3Ctrl, "İsk3 %"),
-                  ],
-                ),
-              ),
-            ),
-
-            // 9. KDV (70)
             _buildCell(
               width: 70,
-              child: Center(child: _buildCompactInput(_taxCtrl, "%")),
+              child: Center(child: _buildCompactInput(_vatCtrl, "%")),
             ),
-
-            // 10. NET TOPLAM (110)
             _buildCell(
-              width: 110,
-              child: Center(
-                child: Text(
-                  "₺${widget.item.lineTotal.toStringAsFixed(2)}",
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                    color: AppColors.primary,
-                  ),
-                  textAlign: TextAlign.right,
-                ),
-              ),
+              width: 90,
+              child: Center(child: _buildCompactInput(_locationCtrl, "")),
             ),
-
-            // 11. SİL BUTONU (50)
             _buildCell(
               width: 50,
-              showBorder: false, // Son hücrenin sağında çizgi olmasın
+              showBorder: false,
               child: Center(
                 child: IconButton(
                   icon: const Icon(
@@ -798,90 +604,34 @@ class _PurchaseItemRowState extends State<_PurchaseItemRow> {
     );
   }
 
-  // Hücreleri standartlaştırmak için yardımcı Widget (Dikey çizgiyi çizer)
   Widget _buildCell({
     required double width,
     required Widget child,
     bool showBorder = true,
   }) {
-    return Container(
-      width: width,
-      padding: const EdgeInsets.symmetric(horizontal: 6),
-      decoration: BoxDecoration(
-        border:
-            showBorder
-                ? Border(right: BorderSide(color: Colors.grey.shade300))
-                : null,
-      ),
-      child: child,
-    );
+    return ItemTableCell(width: width, child: child, showBorder: showBorder);
   }
 
-  // Daha az yer kaplayan input kutusu
   Widget _buildCompactInput(
     TextEditingController ctrl,
     String hint, {
     bool isHighlight = false,
   }) {
-    return SizedBox(
-      height: 32, // 🔥 Dikeyde çok yer kaplamasın
-      child: TextFormField(
-        controller: ctrl,
-        onChanged: (v) => _updateItem(),
-        textAlign: TextAlign.center,
-        keyboardType: TextInputType.number,
-        style: TextStyle(
-          fontSize: 13,
-          color: isHighlight ? Colors.deepOrange : Colors.black87,
-          fontWeight: isHighlight ? FontWeight.bold : FontWeight.normal,
-        ),
-        decoration: InputDecoration(
-          hintText: hint,
-          hintStyle: const TextStyle(fontSize: 11, color: Colors.grey),
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 4,
-            vertical: 0,
-          ),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(6),
-            borderSide: BorderSide(
-              color:
-                  isHighlight
-                      ? Colors.deepOrange.shade200
-                      : Colors.grey.shade400,
-            ),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(6),
-            borderSide: BorderSide(
-              color:
-                  isHighlight
-                      ? Colors.deepOrange.shade300
-                      : Colors.grey.shade300,
-            ),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(6),
-            borderSide: BorderSide(
-              color: isHighlight ? Colors.deepOrange : AppColors.primary,
-              width: 1.5,
-            ),
-          ),
-        ),
-      ),
+    return CompactInput(
+      controller: ctrl,
+      hint: hint,
+      onChanged: (_) => _updateItem(),
+      highlight: isHighlight,
     );
   }
 
   Widget _buildDateSelector(BuildContext context) {
-    final dateStr =
-        widget.item.expirationDate != null
-            ? DateFormat('dd.MM.yyyy').format(widget.item.expirationDate!)
-            : "SKT Seç";
+    final dateStr = DateFormat('dd.MM.yyyy').format(widget.item.expirationDate);
     return InkWell(
       onTap: () async {
         final date = await showDatePicker(
           context: context,
-          initialDate: DateTime.now().add(const Duration(days: 365)),
+          initialDate: widget.item.expirationDate,
           firstDate: DateTime.now(),
           lastDate: DateTime.now().add(const Duration(days: 3650)),
         );
@@ -892,16 +642,8 @@ class _PurchaseItemRowState extends State<_PurchaseItemRow> {
         height: 32,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color:
-              widget.item.expirationDate == null
-                  ? Colors.red.shade50
-                  : Colors.white,
-          border: Border.all(
-            color:
-                widget.item.expirationDate == null
-                    ? Colors.red.shade200
-                    : Colors.grey.shade300,
-          ),
+          color: Colors.white,
+          border: Border.all(color: Colors.grey.shade300),
           borderRadius: BorderRadius.circular(6),
         ),
         child: Text(
@@ -909,10 +651,7 @@ class _PurchaseItemRowState extends State<_PurchaseItemRow> {
           style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w500,
-            color:
-                widget.item.expirationDate == null
-                    ? Colors.red
-                    : Colors.black87,
+            color: Colors.black87,
           ),
         ),
       ),

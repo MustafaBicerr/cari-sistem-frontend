@@ -55,4 +55,45 @@ class StockRepository {
   }
 
   // Gerekirse ileride buraya faturayı getirme (getHistory vs) eklenecek
+
+  // Opening Stock Oluştur (Klinik İlk Stok Girişi)
+  Future<Map<String, dynamic>> createOpeningStock(
+    Map<String, dynamic> payload,
+  ) async {
+    try {
+      final token = await _storage.read(key: 'auth_token');
+
+      // print("DEBUG StockRepository: Sending POST to /opening-stock");
+      // print("DEBUG StockRepository: Payload type: ${payload.runtimeType}");
+      // print("DEBUG StockRepository: Full payload: $payload");
+
+      final response = await _dio.post(
+        '/stock/opening', // Backend endpoint
+        data: payload,
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+
+      // print("DEBUG StockRepository: Response status: ${response.statusCode}");
+      // print(
+      //   "DEBUG StockRepository: Response data type: ${response.data.runtimeType}",
+      // );
+      // print("DEBUG StockRepository: Response data: ${response.data}");
+
+      return response.data; // { message: "...", entry: {...} }
+    } on DioException catch (e) {
+      // print("DEBUG StockRepository: DioException caught");
+      // print("DEBUG StockRepository: Error status: ${e.response?.statusCode}");
+      // print("DEBUG StockRepository: Error data: ${e.response?.data}");
+      // print("DEBUG StockRepository: Error message: ${e.message}");
+
+      final errorMsg =
+          e.response?.data?['error'] ??
+          'Opening stok oluşturulurken bağlantı hatası oluştu.';
+      throw Exception(errorMsg);
+    } catch (e) {
+      print("DEBUG StockRepository: Unexpected error: $e");
+      print("DEBUG StockRepository: Error type: ${e.runtimeType}");
+      throw Exception('Beklenmeyen bir hata oluştu: $e');
+    }
+  }
 }

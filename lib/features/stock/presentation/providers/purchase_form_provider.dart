@@ -10,13 +10,14 @@ class PurchaseItemState {
   final String uiId;
   final String productId;
   final String productName;
-  final String productSource; // 🔥 YENİ: 'local' veya 'global'
+  final String productSource; //'local' veya 'global'
+  final String? imageUrl;
   final String batchNo;
   final DateTime? expirationDate;
   final double quantity;
   final double freeQuantity;
   final double unitPrice;
-  final double sellingPrice; // 🔥 YENİ: Satış Fiyatı
+  final double sellingPrice; //YENİ: Satış Fiyatı
   final double discount1;
   final double discount2;
   final double discount3;
@@ -27,6 +28,7 @@ class PurchaseItemState {
     required this.productId,
     required this.productName,
     required this.productSource,
+    this.imageUrl,
     this.batchNo = '',
     this.expirationDate,
     this.quantity = 1,
@@ -56,6 +58,7 @@ class PurchaseItemState {
       productId: productId,
       productName: productName,
       productSource: productSource,
+      imageUrl: imageUrl,
       batchNo: batchNo ?? this.batchNo,
       expirationDate: expirationDate ?? this.expirationDate,
       quantity: quantity ?? this.quantity,
@@ -87,7 +90,8 @@ class PurchaseItemState {
 class PurchaseFormState {
   final String? supplierId;
   final String? supplierName;
-  final String supplierSource; // 🔥 YENİ: 'local' veya 'global'
+  final String supplierSource; //'local' veya 'global'
+  final Map<String, dynamic>? supplierData;
   final String invoiceNo;
   final DateTime invoiceDate;
   final DateTime? dueDate;
@@ -103,6 +107,7 @@ class PurchaseFormState {
     this.supplierId,
     this.supplierName,
     this.supplierSource = 'local',
+    this.supplierData,
     this.invoiceNo = '',
     required this.invoiceDate,
     this.dueDate,
@@ -119,6 +124,7 @@ class PurchaseFormState {
     String? supplierId,
     String? supplierName,
     String? supplierSource,
+    Map<String, dynamic>? supplierData,
     String? invoiceNo,
     DateTime? invoiceDate,
     DateTime? dueDate,
@@ -130,11 +136,16 @@ class PurchaseFormState {
     String? error,
     bool clearError = false,
     bool? isSupplierLoading,
+    bool clearSupplier = false,
   }) {
     return PurchaseFormState(
-      supplierId: supplierId ?? this.supplierId,
-      supplierName: supplierName ?? this.supplierName,
-      supplierSource: supplierSource ?? this.supplierSource,
+      // clearSupplier true ise null yap, değilse yeni değeri al, o da yoksa eskiyi koru
+      supplierId: clearSupplier ? null : (supplierId ?? this.supplierId),
+      supplierName: clearSupplier ? null : (supplierName ?? this.supplierName),
+      supplierData: clearSupplier ? null : (supplierData ?? this.supplierData),
+      supplierSource:
+          clearSupplier ? 'local' : (supplierSource ?? this.supplierSource),
+
       invoiceNo: invoiceNo ?? this.invoiceNo,
       invoiceDate: invoiceDate ?? this.invoiceDate,
       dueDate: dueDate ?? this.dueDate,
@@ -152,12 +163,37 @@ class PurchaseFormState {
   double get totalGross => items.fold(0, (sum, item) => sum + item.grossTotal);
   double get totalRowDiscount =>
       items.fold(0, (sum, item) => sum + item.rowDiscountAmount);
-  double get totalTax => items.fold(0, (sum, item) => sum + item.taxAmount);
-  double get subTotal => items.fold(0, (sum, item) => sum + item.lineTotal);
-  double get grandTotal {
-    final result = subTotal - generalDiscountAmount;
+  // double get totalTax => items.fold(0, (sum, item) => sum + item.taxAmount);
+  double get totalTax => recalculatedTotalTax;
+  double get totalNetBeforeGeneralDiscount =>
+      items.fold(0, (sum, item) => sum + item.netTotal);
+  double get adjustedNetTotal {
+    final result = totalNetBeforeGeneralDiscount - generalDiscountAmount;
     return result > 0 ? result : 0;
   }
+
+  double get recalculatedTotalTax {
+    return items.fold(0, (sum, item) {
+      final ratio =
+          totalNetBeforeGeneralDiscount == 0
+              ? 0
+              : item.netTotal / totalNetBeforeGeneralDiscount;
+
+      final itemGeneralDiscount = generalDiscountAmount * ratio;
+      final adjustedItemNet = item.netTotal - itemGeneralDiscount;
+
+      return sum + (adjustedItemNet * (item.taxRate / 100));
+    });
+  }
+
+  double get subTotal => items.fold(0, (sum, item) => sum + item.lineTotal);
+  double get grandTotal {
+    return adjustedNetTotal + recalculatedTotalTax;
+  }
+  // double get grandTotal {
+  //   final result = subTotal - generalDiscountAmount;
+  //   return result > 0 ? result : 0;
+  // }
 
   double get remainingDebt {
     final result = grandTotal - paidAmount;
@@ -172,21 +208,27 @@ class PurchaseFormNotifier extends StateNotifier<PurchaseFormState> {
   PurchaseFormNotifier(this._repo)
     : super(PurchaseFormState(invoiceDate: DateTime.now()));
 
+  // Çarpıya basıldığında çağrılacak temizleme metodu
+  void clearSupplier() {
+    state = state.copyWith(clearSupplier: true);
+  }
+
   //Pre-flight Creation Mantığı
   Future<void> selectSupplier(Map<String, dynamic> selection) async {
     final source = selection['source'];
 
-    // 1. Zaten yerel bir tedarikçiyse, direkt State'i güncelle ve çık.
+    // 1. Zaten yerel bir tedarikçiyse
     if (source == 'local') {
       state = state.copyWith(
         supplierId: selection['id'],
         supplierName: selection['name'],
         supplierSource: 'local',
+        supplierData: selection, // 🔥 Veriyi sakla
       );
       return;
     }
 
-    // 2. Global (Resmi Depo) ise, önce veritabanında oluştur (Pre-flight)
+    // 2. Global ise oluştur
     state = state.copyWith(isSupplierLoading: true, clearError: true);
 
     try {
@@ -200,15 +242,13 @@ class PurchaseFormNotifier extends StateNotifier<PurchaseFormState> {
         "warehouse_type": selection['warehouse_type'] ?? '',
       };
 
-      // Repository üzerinden API'ye gönder, yeni kaydedilen objeyi al
       final newSupplier = await _repo.createSupplier(payload);
 
-      // Artık GERÇEK bir UUID'miz var. State'i buna göre güncelle.
       state = state.copyWith(
-        supplierId: newSupplier['id'], // Backend'in ürettiği yepyeni UUID
+        supplierId: newSupplier['id'],
         supplierName: newSupplier['name'],
-        supplierSource:
-            'local', // Artık global değil, bizim yerel tedarikçimiz oldu!
+        supplierSource: 'local',
+        supplierData: newSupplier, // 🔥 Oluşan yeni veriyi sakla
         isSupplierLoading: false,
       );
     } catch (e) {
@@ -240,14 +280,16 @@ class PurchaseFormNotifier extends StateNotifier<PurchaseFormState> {
     double sellPrice,
     double taxRate,
     String source,
+    String? imageUrl,
   ) {
     final newItem = PurchaseItemState(
       uiId: const Uuid().v4(),
       productId: productId,
       productName: productName,
       productSource: source, // 'local' veya 'global'
+      imageUrl: imageUrl,
       unitPrice: price,
-      sellingPrice: sellPrice, // 🔥 Yeni Satış Fiyatı
+      sellingPrice: sellPrice, //Yeni Satış Fiyatı
       taxRate: taxRate,
     );
     state = state.copyWith(items: [...state.items, newItem]);
