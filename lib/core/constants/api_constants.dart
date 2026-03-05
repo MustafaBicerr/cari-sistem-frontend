@@ -19,6 +19,14 @@ class ApiConstants {
   static const String login = '/auth/login';
   static const String register = '/auth/register';
 
+  // Additional auth endpoints
+  static const String refresh = '/auth/refresh';
+  static const String logout = '/auth/logout';
+  static const String sessions = '/auth/sessions';
+  static const String forgotPassword = '/auth/forgot-password';
+  static const String resetPassword = '/auth/reset-password';
+  static const String changePassword = '/auth/change-password';
+
   // Dashboard Endpoints
   static const String dashboardSummary = '/dashboard/summary';
 

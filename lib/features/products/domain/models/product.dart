@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 class Product {
   final String id;
   final String name;
@@ -86,6 +88,11 @@ class Product {
 
   // JSON'dan Nesneye Çevirme (Factory Constructor)
   factory Product.fromJson(Map<String, dynamic> json) {
+    debugPrint(
+      '[PRODUCT DEBUG][MODEL] Parsing product\n'
+      'Raw JSON keys: ${json.keys.join(', ')}\n'
+      'ID: ${json['id']}',
+    );
     // Tarihçe alanını güvenli parse etme
     List<Map<String, dynamic>> history = [];
     if (json['buying_price_history'] != null) {
@@ -136,6 +143,15 @@ class Product {
               ? DateTime.tryParse(json['updated_at'].toString())
               : null,
       buyingPriceHistory: history,
+    ).._logCreated();
+  }
+
+  void _logCreated() {
+    debugPrint(
+      '[PRODUCT DEBUG][MODEL] Product created\n'
+      'ID: $id\n'
+      'Name: $name\n'
+      'Barcode: $barcode',
     );
   }
 }

@@ -1,44 +1,78 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../core/api/api_client.dart'; // ApiClient Provider'ı buradan alıyoruz
-import '../../data/auth_repository.dart';
-import 'login_state_provider.dart';
+﻿import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
+import '../../../../core/api/api_client.dart';
+import '../../../../core/services/secure_storage_service.dart';
+import '../../domain/usecases/refresh_token_usecase.dart';
+import '../../data/datasources/auth_local_datasource.dart';
+import '../../data/datasources/auth_remote_datasource.dart';
+import '../../data/repositories/auth_repository_impl.dart';
+import '../providers/auth_state_provider.dart';
+import '../../domain/entities/user.dart';
+import '../../data/models/auth_tokens_model.dart';
 
-// 👇 DÜZELTME: Repository artık ApiClient'tan besleniyor
-final authRepositoryProvider = Provider<AuthRepository>((ref) {
-  final apiClient = ref.watch(apiClientProvider);
-  return AuthRepository(dio: apiClient.dio, storage: apiClient.storage);
-});
+// datasources/providers
+final authRemoteDatasourceProvider = Provider(
+  (ref) => AuthRemoteDatasource(ref.read(apiClientProvider)),
+);
+final authLocalDatasourceProvider = Provider(
+  (ref) => AuthLocalDatasource(SecureStorageService()),
+);
 
-final authControllerProvider = Provider((ref) {
-  return AuthController(ref);
-});
+// repo provider
+final authRepositoryProvider = Provider(
+  (ref) => AuthRepositoryImpl(
+    ref.read(authRemoteDatasourceProvider),
+    ref.read(authLocalDatasourceProvider),
+  ),
+);
 
-class AuthController {
-  final Ref _ref;
+// usecase provider
+final refreshTokenUseCaseProvider = Provider(
+  (ref) => RefreshTokenUseCase(ref.read(authRepositoryProvider)),
+);
 
-  AuthController(this._ref);
+// controller provider
+final authControllerProvider = StateNotifierProvider<AuthController, AuthState>(
+  (ref) {
+    return AuthController(
+      ref.read(refreshTokenUseCaseProvider),
+      ref.read(authLocalDatasourceProvider),
+    );
+  },
+);
 
-  Future<void> login({
-    required String username,
-    required String password,
-    required void Function() onSuccess,
-    required void Function(String error) onError,
-  }) async {
-    _ref.read(isLoadingProvider.notifier).state = true;
+class AuthController extends StateNotifier<AuthState> {
+  final RefreshTokenUseCase _refresh;
+  final AuthLocalDatasource _local;
 
-    try {
-      final repo = _ref.read(authRepositoryProvider);
-      final success = await repo.login(username, password);
+  AuthController(this._refresh, this._local) : super(const AuthState()) {
+    _init();
+  }
 
-      if (success) {
-        onSuccess();
-      } else {
-        onError("Giriş başarısız. Bilgileri kontrol edin.");
-      }
-    } catch (e) {
-      onError(e.toString());
-    } finally {
-      _ref.read(isLoadingProvider.notifier).state = false;
+  Future<void> _init() async {
+    final tokens = await _local.getTokens();
+    if (tokens == null) {
+      state = const AuthState(status: AuthStatus.unauthenticated);
+      return;
     }
+    try {
+      final newTokens = await _refresh.call(tokens.refreshToken);
+      await _local.saveTokens(AuthTokensModel.fromEntity(newTokens));
+      state = const AuthState(status: AuthStatus.authenticated);
+    } catch (_) {
+      state = const AuthState(status: AuthStatus.unauthenticated);
+    }
+  }
+
+  void setAuthenticated(User user) {
+    state = AuthState(status: AuthStatus.authenticated, user: user);
+  }
+
+  void setUnauthenticated() {
+    state = const AuthState(status: AuthStatus.unauthenticated);
+  }
+
+  void markMustChangePassword(User user) {
+    state = AuthState(status: AuthStatus.mustChangePassword, user: user);
   }
 }

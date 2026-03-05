@@ -1,22 +1,20 @@
 import 'package:dio/dio.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../../../../core/api/api_client.dart';
 import '../../../../core/constants/api_constants.dart';
 
 class StockRepository {
-  final Dio _dio = Dio(BaseOptions(baseUrl: ApiConstants.baseUrl));
-  final _storage = const FlutterSecureStorage();
+  final ApiClient _apiClient;
+
+  StockRepository(this._apiClient);
 
   // Fatura Kaydet (Mal Kabul)
   Future<Map<String, dynamic>> createPurchaseInvoice(
     Map<String, dynamic> payload,
   ) async {
     try {
-      final token = await _storage.read(key: 'auth_token');
-
-      final response = await _dio.post(
+      final response = await _apiClient.dio.post(
         '/stock/purchase', // Backend rotamız
         data: payload,
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
 
       return response.data; // { message: "...", invoice: {...} }
@@ -35,12 +33,9 @@ class StockRepository {
     Map<String, dynamic> payload,
   ) async {
     try {
-      final token = await _storage.read(key: 'auth_token');
-
-      final response = await _dio.post(
+      final response = await _apiClient.dio.post(
         '/suppliers', // Backend'deki supplier route'umuz
         data: payload,
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
 
       return response
@@ -61,12 +56,10 @@ class StockRepository {
     Map<String, dynamic> payload,
   ) async {
     try {
-      final token = await _storage.read(key: 'auth_token');
-
       print("DEBUG StockRepository: Sending POST to /stock/opening");
       try {
         print(
-          "DEBUG StockRepository: Full URL: ${_dio.options.baseUrl}/stock/opening",
+          "DEBUG StockRepository: Full URL: ${_apiClient.dio.options.baseUrl}/stock/opening",
         );
       } catch (e) {
         // ignore
@@ -78,10 +71,9 @@ class StockRepository {
         print("DEBUG StockRepository: Failed to stringify payload: $e");
       }
 
-      final response = await _dio.post(
+      final response = await _apiClient.dio.post(
         '/stock/opening', // Backend endpoint
         data: payload,
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
 
       print("DEBUG StockRepository: Response status: ${response.statusCode}");

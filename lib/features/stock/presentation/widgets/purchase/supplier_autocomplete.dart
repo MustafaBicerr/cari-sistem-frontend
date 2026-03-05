@@ -1,8 +1,6 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import '../../../../../core/constants/api_constants.dart';
+import '../../../../../core/api/api_client.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../providers/purchase_form_provider.dart';
 
@@ -24,13 +22,10 @@ class _SupplierAutocompleteState extends ConsumerState<SupplierAutocomplete> {
     setState(() => _isLoading = true);
 
     try {
-      const _storage = FlutterSecureStorage();
-      final token = await _storage.read(key: 'auth_token');
-      final dio = Dio(BaseOptions(baseUrl: ApiConstants.baseUrl));
-      final options = Options(headers: {'Authorization': 'Bearer $token'});
+      final apiClient = ref.read(apiClientProvider);
 
       // 1. Yerel Tedarikçileri Getir
-      final localRes = await dio.get('/suppliers', options: options);
+      final localRes = await apiClient.dio.get('/suppliers');
       List<Map<String, dynamic>> localSuppliers =
           List<Map<String, dynamic>>.from(localRes.data)
               .where(
@@ -48,10 +43,9 @@ class _SupplierAutocompleteState extends ConsumerState<SupplierAutocomplete> {
               .toSet();
 
       // 2. Resmi Depoları Getir (Global)
-      final globalRes = await dio.get(
+      final globalRes = await apiClient.dio.get(
         '/suppliers/search-official',
         queryParameters: {'q': query},
-        options: options,
       );
 
       // 🔥 EĞER GLOBAL DEPO, YERELDE ZATEN VARSA LİSTEYE EKLEME!

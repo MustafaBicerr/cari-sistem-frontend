@@ -90,6 +90,11 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
     // Artık filtrelenmiş listeyi dinliyoruz
     final productsAsync = ref.watch(filteredProductListProvider);
 
+    debugPrint(
+      '[PRODUCT DEBUG][SCREEN] ProductListScreen build\n'
+      'AsyncValue state: ${productsAsync.runtimeType}',
+    );
+
     return KeyboardListener(
       focusNode: _focusNode,
       autofocus: true, // Sayfa açılınca dinlemeye başla
@@ -154,6 +159,11 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                       () => const Center(child: CircularProgressIndicator()),
                   error: (err, stack) => Center(child: Text('Hata: $err')),
                   data: (products) {
+                    debugPrint(
+                      '[PRODUCT DEBUG][SCREEN] Products loaded\n'
+                      'Count: ${products.length}',
+                    );
+
                     if (products.isEmpty) {
                       return const Center(
                         child: Text("Henüz ürün eklenmemiş."),

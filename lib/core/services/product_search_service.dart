@@ -1,13 +1,11 @@
-import 'package:dio/dio.dart';
-import '../constants/api_constants.dart';
+import 'package:mobile/core/api/api_client.dart';
 
 class ProductSearchService {
-  static final Dio _dio = Dio(BaseOptions(baseUrl: ApiConstants.baseUrl));
-
   /// Local + Global ürünleri birlikte arar
   static Future<List<Map<String, dynamic>>> searchCombinedProducts({
     required String query,
     required List<dynamic> localProducts,
+    required ApiClient apiClient,
   }) async {
     if (query.trim().isEmpty) return [];
 
@@ -41,7 +39,7 @@ class ProductSearchService {
     List<Map<String, dynamic>> globalMatches = [];
 
     try {
-      final response = await _dio.get(
+      final response = await apiClient.dio.get(
         "/products/global-search",
         queryParameters: {"q": query},
       );

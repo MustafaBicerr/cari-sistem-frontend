@@ -1,9 +1,13 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
+import 'package:mobile/core/api/api_client.dart';
 import 'package:uuid/uuid.dart';
 import '../../data/stock_repository.dart';
 
-final stockRepositoryProvider = Provider((ref) => StockRepository());
+final stockRepositoryProvider = Provider((ref) {
+  final apiClient = ref.read(apiClientProvider);
+  return StockRepository(apiClient);
+});
 
 // 1. SATIR MODELİ
 class PurchaseItemState {

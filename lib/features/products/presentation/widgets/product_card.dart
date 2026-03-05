@@ -1,4 +1,5 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
 import '../../../../core/constants/api_constants.dart';
@@ -29,6 +30,13 @@ class ProductCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    debugPrint(
+      '[PRODUCT DEBUG][CARD] ProductCard rendering\n'
+      'Product: ${product.name}\n'
+      'ID: ${product.id}\n'
+      'Price: ${product.sellingPrice}',
+    );
+
     return RepaintBoundary(
       child: Container(
         decoration: BoxDecoration(

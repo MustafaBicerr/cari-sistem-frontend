@@ -11,11 +11,12 @@ void main() async {
   runApp(const ProviderScope(child: MyApp()));
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends ConsumerWidget {
   const MyApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final router = ref.watch(appRouterProvider);
     return MaterialApp.router(
       title: 'Cari Sistem',
       debugShowCheckedModeBanner: false,
@@ -36,7 +37,7 @@ class MyApp extends StatelessWidget {
       ],
       // Uygulamanın varsayılan dili Türkçe olsun
       locale: const Locale('tr', 'TR'),
-      routerConfig: AppRouter.router,
+      routerConfig: router,
     );
   }
 }

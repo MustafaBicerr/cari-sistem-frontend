@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:image_picker/image_picker.dart';
@@ -68,6 +69,14 @@ class ProductController {
     required void Function(String error) onError,
   }) async {
     try {
+      debugPrint(
+        '[PRODUCT DEBUG][CONTROLLER] createProduct called\n'
+        'Name: $name\n'
+        'Barcode: $barcode\n'
+        'Buying price: $buyingPrice\n'
+        'Selling price: $sellingPrice',
+      );
+
       final repo = _ref.read(productRepositoryProvider);
 
       // JSON Standartlaştırması (Clean Architecture: İş mantığı buradadır)
@@ -96,6 +105,11 @@ class ProductController {
 
       await repo.createProduct(newProduct, imageFile: image);
 
+      debugPrint(
+        '[PRODUCT DEBUG][CONTROLLER] createProduct successful\n'
+        'Product: $name',
+      );
+
       _ref.invalidate(productListProvider);
       onSuccess();
     } catch (e) {
@@ -109,11 +123,26 @@ class ProductController {
     required void Function(String error) onError,
   }) async {
     try {
+      debugPrint(
+        '[PRODUCT DEBUG][CONTROLLER] deleteProduct called\n'
+        'Product ID: $id',
+      );
+
       final repo = _ref.read(productRepositoryProvider);
       await repo.deleteProduct(id);
+
+      debugPrint(
+        '[PRODUCT DEBUG][CONTROLLER] deleteProduct successful\n'
+        'Deleted ID: $id',
+      );
+
       _ref.invalidate(productListProvider);
       onSuccess();
     } catch (e) {
+      debugPrint(
+        '[PRODUCT DEBUG][CONTROLLER] deleteProduct ERROR\n'
+        'Exception: $e',
+      );
       onError(e.toString());
     }
   }
@@ -133,6 +162,13 @@ class ProductController {
     required void Function(String error) onError,
   }) async {
     try {
+      debugPrint(
+        '[PRODUCT DEBUG][CONTROLLER] updateProduct called\n'
+        'Product ID: $id\n'
+        'Name: $name\n'
+        'Selling price: $sellingPrice',
+      );
+
       final repo = _ref.read(productRepositoryProvider);
 
       final standardizedLocalDetails = {
@@ -151,9 +187,19 @@ class ProductController {
       };
 
       await repo.updateProduct(id: id, updates: updates, imageFile: image);
+
+      debugPrint(
+        '[PRODUCT DEBUG][CONTROLLER] updateProduct successful\n'
+        'Updated ID: $id',
+      );
+
       _ref.invalidate(productListProvider);
       onSuccess();
     } catch (e) {
+      debugPrint(
+        '[PRODUCT DEBUG][CONTROLLER] updateProduct ERROR\n'
+        'Exception: $e',
+      );
       onError(e.toString());
     }
   }

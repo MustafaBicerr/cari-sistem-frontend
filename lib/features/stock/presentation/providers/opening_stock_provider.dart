@@ -1,13 +1,17 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
+import 'package:mobile/core/api/api_client.dart';
 import '../../data/stock_repository.dart';
 import '../../domain/entities/opening_stock_entity.dart';
 import '../../domain/entities/opening_stock_item_entity.dart';
 
 final openingStockProvider =
-    StateNotifierProvider<OpeningStockNotifier, OpeningStockState>(
-      (ref) => OpeningStockNotifier(),
-    );
+    StateNotifierProvider<OpeningStockNotifier, OpeningStockState>((ref) {
+      final apiClient = ref.read(apiClientProvider);
+      final repository = StockRepository(apiClient);
+
+      return OpeningStockNotifier(repository);
+    });
 
 class OpeningStockState {
   final DateTime entryDate;
@@ -38,10 +42,11 @@ class OpeningStockState {
 }
 
 class OpeningStockNotifier extends StateNotifier<OpeningStockState> {
-  OpeningStockNotifier()
+  final StockRepository _repository;
+  OpeningStockNotifier(this._repository)
     : super(OpeningStockState(entryDate: DateTime.now(), items: const []));
 
-  final StockRepository _repository = StockRepository();
+  // final StockRepository _repository = StockRepository();
 
   void setEntryDate(DateTime date) {
     state = state.copyWith(entryDate: date);

@@ -1,304 +1,195 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
-import 'package:mobile/features/auth/presentation/providers/auth_controller.dart';
-import '../../../../core/responsive/responsive_layout.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../providers/login_state_provider.dart';
+﻿import "package:flutter/material.dart";
+import "package:flutter_riverpod/flutter_riverpod.dart";
+import "../../../../core/theme/app_colors.dart";
+import "../providers/login_controller.dart";
+import "../providers/auth_controller.dart";
 
-class LoginScreen extends StatelessWidget {
+class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    // Fenotip Motorunu Çalıştırıyoruz
-    return const Scaffold(
-      body: ResponsiveLayout(
-        mobile: _LoginMobileView(),
-        desktop: _LoginDesktopView(),
-      ),
-    );
-  }
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-// -----------------------------------------------------------------------------
-// FENOTİP 1: MOBİL GÖRÜNÜM (Sade ve Odaklı)
-// -----------------------------------------------------------------------------
-class _LoginMobileView extends StatelessWidget {
-  const _LoginMobileView();
+class _LoginScreenState extends ConsumerState<LoginScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final _identifierCtrl = TextEditingController();
+  final _passwordCtrl = TextEditingController();
+  bool _obscurePassword = true;
+
+  @override
+  void dispose() {
+    _identifierCtrl.dispose();
+    _passwordCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleLogin() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    final controller = ref.read(loginControllerProvider.notifier);
+    await controller.login(
+      identifier: _identifierCtrl.text.trim(),
+      password: _passwordCtrl.text,
+      deviceName: "Mobile App",
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
+    ref.listen<AsyncValue<void>>(loginControllerProvider, (previous, next) {
+      next.when(
+        data: (_) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("Giriş başarılı!"),
+                backgroundColor: Colors.green,
+              ),
+            );
+          }
+        },
+        error: (error, st) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text("Giriş hatası: $error"),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        },
+        loading: () {},
+      );
+    });
+
+    final loginState = ref.watch(loginControllerProvider);
+    final isLoading = loginState.isLoading;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("Giriş Yap"),
+        centerTitle: true,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Form(
+          key: _formKey,
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const _LogoAndTitle(), // Ortak Logo Parçası
-              const SizedBox(height: 40),
-              const _LoginForm(), // Ortak Form Parçası
-              const SizedBox(height: 24),
-              _buildFooter(),
+              const SizedBox(height: 32),
+              Text(
+                "Veteriner Kliniği Yönetim Sistemi",
+                style: Theme.of(context).textTheme.headlineSmall,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 48),
+              TextFormField(
+                controller: _identifierCtrl,
+                decoration: InputDecoration(
+                  labelText: "E-posta veya Telefon",
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  filled: true,
+                  fillColor: Colors.white,
+                  prefixIcon: const Icon(Icons.person),
+                ),
+                keyboardType: TextInputType.emailAddress,
+                validator: (val) {
+                  if (val == null || val.isEmpty) {
+                    return "E-posta veya telefon gerekli";
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _passwordCtrl,
+                obscureText: _obscurePassword,
+                decoration: InputDecoration(
+                  labelText: "Şifre",
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  filled: true,
+                  fillColor: Colors.white,
+                  prefixIcon: const Icon(Icons.lock),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                    ),
+                    onPressed: () {
+                      setState(() => _obscurePassword = !_obscurePassword);
+                    },
+                  ),
+                ),
+                validator: (val) {
+                  if (val == null || val.isEmpty) {
+                    return "Şifre gerekli";
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () {
+                    // TODO: Forgot password screen
+                  },
+                  child: const Text("Şifremi Unuttum?"),
+                ),
+              ),
+              const SizedBox(height: 32),
+              SizedBox(
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: isLoading ? null : _handleLogin,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child:
+                      isLoading
+                          ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                          : const Text(
+                            "GİRİŞ YAP",
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text("Hesabınız yok mu? "),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pushNamed(context, "/auth/register");
+                    },
+                    child: const Text("Kaydol"),
+                  ),
+                ],
+              ),
             ],
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildFooter() {
-    return const Center(
-      child: Text(
-        "Biçer Teknoloji © 2025",
-        style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
-      ),
-    );
-  }
-}
-
-// -----------------------------------------------------------------------------
-// FENOTİP 2: DESKTOP GÖRÜNÜM (Split Screen - Henry Tarzı)
-// -----------------------------------------------------------------------------
-class _LoginDesktopView extends StatelessWidget {
-  const _LoginDesktopView();
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        // SOL TARAFA: Marka Görseli (Buraya Henry'nin klası gelecek)
-        Expanded(
-          flex: 1, // Ekranın yarısı (veya oranı)
-          child: Container(
-            color: AppColors.primary,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                // İleride buraya gerçek bir resim koyacağız
-                // Image.asset('assets/images/login_bg.jpg', fit: BoxFit.cover),
-                Container(color: AppColors.primary.withOpacity(0.9)), // Overlay
-                const Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.inventory_2_outlined,
-                        size: 100,
-                        color: Colors.white,
-                      ),
-                      SizedBox(height: 20),
-                      Text(
-                        "İşletmenizi\nGeleceğe Taşıyın.",
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 32,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        // SAĞ TARAF: Giriş Formu
-        Expanded(
-          flex: 1,
-          child: Container(
-            color: AppColors.background,
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(
-                  maxWidth: 450,
-                ), // Form çok yayılmasın
-                child: const Padding(
-                  padding: EdgeInsets.all(48.0),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _LogoAndTitle(isDesktop: true),
-                      SizedBox(height: 48),
-                      _LoginForm(),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// -----------------------------------------------------------------------------
-// ORTAK PARÇALAR (GENOTİP)
-// Hem Mobilde hem Desktopta kullanılan yapıtaşları
-// -----------------------------------------------------------------------------
-
-class _LogoAndTitle extends StatelessWidget {
-  final bool isDesktop;
-  const _LogoAndTitle({this.isDesktop = false});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment:
-          isDesktop ? CrossAxisAlignment.start : CrossAxisAlignment.center,
-      children: [
-        // Geçici İkon (Logo yerine)
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: AppColors.primary.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: const Icon(Icons.pets, color: AppColors.primary, size: 32),
-        ),
-        const SizedBox(height: 24),
-        Text(
-          "Tekrar Hoş Geldiniz!",
-          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-            color: AppColors.textPrimary,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          "Hesabınıza giriş yaparak devam edin.",
-          style: Theme.of(
-            context,
-          ).textTheme.bodyLarge?.copyWith(color: AppColors.textSecondary),
-        ),
-      ],
-    );
-  }
-}
-
-class _LoginForm extends ConsumerStatefulWidget {
-  const _LoginForm();
-
-  @override
-  ConsumerState<_LoginForm> createState() => _LoginFormState();
-}
-
-class _LoginFormState extends ConsumerState<_LoginForm> {
-  late final TextEditingController _usernameController;
-  late final TextEditingController _passwordController;
-
-  @override
-  void initState() {
-    super.initState();
-    // DEV: Geliştirme aşamasında kolaylık olması için varsayılan değerler
-    _usernameController = TextEditingController(text: "patron");
-    _passwordController = TextEditingController(text: "123");
-  }
-
-  @override
-  void dispose() {
-    _usernameController.dispose();
-    _passwordController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isPasswordVisible = ref.watch(passwordVisibilityProvider);
-    final isLoading = ref.watch(isLoadingProvider);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        // Email Input
-        const Text(
-          "Kullanıcı Adı",
-          style: TextStyle(fontWeight: FontWeight.w600),
-        ),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: _usernameController,
-          decoration: const InputDecoration(
-            hintText: "kullanici_adi",
-            prefixIcon: Icon(Icons.person_outline),
-          ),
-        ),
-        const SizedBox(height: 20),
-
-        // Password Input
-        const Text("Şifre", style: TextStyle(fontWeight: FontWeight.w600)),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: _passwordController,
-          obscureText: isPasswordVisible,
-          decoration: InputDecoration(
-            hintText: "••••••••",
-            prefixIcon: const Icon(Icons.lock_outline),
-            suffixIcon: IconButton(
-              icon: Icon(
-                isPasswordVisible ? Icons.visibility_off : Icons.visibility,
-              ),
-              onPressed: () {
-                ref.read(passwordVisibilityProvider.notifier).state =
-                    !isPasswordVisible;
-              },
-            ),
-          ),
-        ),
-
-        // Şifremi Unuttum
-        Align(
-          alignment: Alignment.centerRight,
-          child: TextButton(
-            onPressed: () {},
-            child: const Text("Şifremi Unuttum?"),
-          ),
-        ),
-        const SizedBox(height: 24),
-
-        // Giriş Butonu
-        ElevatedButton(
-          onPressed:
-              isLoading
-                  ? null
-                  : () {
-                    ref
-                        .read(authControllerProvider)
-                        .login(
-                          username: _usernameController.text.trim(),
-                          password: _passwordController.text,
-                          onSuccess: () {
-                            // Dashboard'a Işınlan 🚀
-                            context.go('/');
-                          },
-                          onError: (msg) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(msg),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
-                          },
-                        );
-                  },
-          child:
-              isLoading
-                  ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(
-                      color: Colors.white,
-                      strokeWidth: 2,
-                    ),
-                  )
-                  : const Text("Giriş Yap"),
-        ),
-      ],
     );
   }
 }

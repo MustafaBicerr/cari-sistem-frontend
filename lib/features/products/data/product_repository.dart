@@ -1,31 +1,48 @@
 import 'dart:convert';
 import 'package:dio/dio.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../../../core/api/api_client.dart';
 import '../../../../core/constants/api_constants.dart';
 import '../domain/models/product.dart';
 
 class ProductRepository {
-  final Dio _dio = Dio(BaseOptions(baseUrl: ApiConstants.baseUrl));
-  final _storage = const FlutterSecureStorage();
+  final ApiClient _apiClient;
+
+  ProductRepository(this._apiClient);
 
   Future<List<Product>> getProducts() async {
     try {
-      final token = await _storage.read(key: 'auth_token');
+      debugPrint(
+        '[PRODUCT DEBUG][REPOSITORY] Requesting products\n'
+        'Endpoint: ${ApiConstants.products}\n'
+        'Headers: Authorization: Bearer [token]\n'
+        'Token type: JWT access_token',
+      );
 
-      final response = await _dio.get(
-        ApiConstants.products,
-        options: Options(
-          headers: {
-            'Authorization': 'Bearer $token',
-            'Content-Type': 'application/json; charset=utf-8',
-          },
-        ),
+      final response = await _apiClient.dio.get(ApiConstants.products);
+
+      debugPrint(
+        '[PRODUCT DEBUG][REPOSITORY] Response received\n'
+        'Status code: ${response.statusCode}\n'
+        'Response type: ${response.data.runtimeType}\n'
+        'Raw data length: ${(response.data as List?)?.length ?? 0}',
       );
 
       final List data = response.data;
-      return data.map((e) => Product.fromJson(e)).toList();
+      final products = data.map((e) => Product.fromJson(e)).toList();
+
+      debugPrint(
+        '[PRODUCT DEBUG][REPOSITORY] Parsing complete\n'
+        'Parsed list length: ${products.length}',
+      );
+
+      return products;
     } catch (e) {
+      debugPrint(
+        '[PRODUCT DEBUG][REPOSITORY] ERROR\n'
+        'Exception: $e',
+      );
       throw Exception("Ürünler yüklenemedi: $e");
     }
   }
@@ -35,7 +52,13 @@ class ProductRepository {
     XFile? imageFile,
   }) async {
     try {
-      final token = await _storage.read(key: 'auth_token');
+      debugPrint(
+        '[PRODUCT DEBUG][REPOSITORY] createProduct called\n'
+        'Product name: ${productData['name']}\n'
+        'Barcode: ${productData['barcode']}\n'
+        'Has image: ${imageFile != null}',
+      );
+
       final dataMap = Map<String, dynamic>.from(productData);
 
       // 🔥 MUCİZE BURADA: Map olan local_details'i güvenli bir JSON String'e çeviriyoruz
@@ -53,19 +76,23 @@ class ProductRepository {
 
       final formData = FormData.fromMap(dataMap);
 
-      final response = await _dio.post(
+      final response = await _apiClient.dio.post(
         ApiConstants.products,
         data: formData,
-        options: Options(
-          headers: {
-            'Authorization': 'Bearer $token',
-            // 🔥 DİKKAT: FormData kullanırken Content-Type manuel yazılmaz, Dio otomatik ayarlar!
-          },
-        ),
+      );
+
+      debugPrint(
+        '[PRODUCT DEBUG][REPOSITORY] createProduct response received\n'
+        'Status: ${response.statusCode}\n'
+        'Product created: ${response.data['product']?['id']}',
       );
 
       return Product.fromJson(response.data['product']);
     } catch (e) {
+      debugPrint(
+        '[PRODUCT DEBUG][REPOSITORY] createProduct ERROR\n'
+        'Exception: $e',
+      );
       throw Exception("Ürün eklenirken hata oluştu: ${e.toString()}");
     }
   }
@@ -77,9 +104,7 @@ class ProductRepository {
     String? batchNo,
   }) async {
     try {
-      final token = await _storage.read(key: 'auth_token');
-
-      await _dio.post(
+      await _apiClient.dio.post(
         '${ApiConstants.products}/$productId/stocks',
         data: {
           "quantity": quantity,
@@ -87,12 +112,6 @@ class ProductRepository {
           "batch_no": batchNo,
           "location": "Depo 1",
         },
-        options: Options(
-          headers: {
-            'Authorization': 'Bearer $token',
-            'Content-Type': 'application/json; charset=utf-8',
-          },
-        ),
       );
     } catch (e) {
       throw Exception("Stok eklenirken hata: $e");
@@ -101,16 +120,7 @@ class ProductRepository {
 
   Future<void> deleteProduct(String id) async {
     try {
-      final token = await _storage.read(key: 'auth_token');
-      await _dio.delete(
-        '${ApiConstants.products}/$id',
-        options: Options(
-          headers: {
-            'Authorization': 'Bearer $token',
-            'Content-Type': 'application/json; charset=utf-8',
-          },
-        ),
-      );
+      await _apiClient.dio.delete('${ApiConstants.products}/$id');
     } catch (e) {
       throw Exception("Ürün silinirken hata oluştu: $e");
     }
@@ -122,7 +132,13 @@ class ProductRepository {
     XFile? imageFile,
   }) async {
     try {
-      final token = await _storage.read(key: 'auth_token');
+      debugPrint(
+        '[PRODUCT DEBUG][REPOSITORY] updateProduct called\n'
+        'Product ID: $id\n'
+        'Updates: ${updates.keys.join(', ')}\n'
+        'Has image: ${imageFile != null}',
+      );
+
       final dataMap = Map<String, dynamic>.from(updates);
 
       // 🔥 AYNI ZIRH BURADA DA GEÇERLİ
@@ -140,16 +156,7 @@ class ProductRepository {
 
       final formData = FormData.fromMap(dataMap);
 
-      await _dio.put(
-        '${ApiConstants.products}/$id',
-        data: formData,
-        options: Options(
-          headers: {
-            'Authorization': 'Bearer $token',
-            // 🔥 DİKKAT: FormData kullanırken Content-Type yazmıyoruz!
-          },
-        ),
-      );
+      await _apiClient.dio.put('${ApiConstants.products}/$id', data: formData);
     } catch (e) {
       throw Exception("Ürün güncellenirken hata oluştu: $e");
     }
@@ -160,11 +167,9 @@ class ProductRepository {
   // İlaç Arama (Autocomplete için)
   Future<List<Map<String, dynamic>>> searchVetilac(String query) async {
     try {
-      final token = await _storage.read(key: 'auth_token');
-      final response = await _dio.get(
-        '${ApiConstants.baseUrl}/vetilac/search',
+      final response = await _apiClient.dio.get(
+        '/vetilac/search',
         queryParameters: {'q': query},
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
       return List<Map<String, dynamic>>.from(response.data);
     } catch (e) {
@@ -175,11 +180,7 @@ class ProductRepository {
   // İlaç Detayı Getir
   Future<Map<String, dynamic>?> getVetilacDetails(String id) async {
     try {
-      final token = await _storage.read(key: 'auth_token');
-      final response = await _dio.get(
-        '${ApiConstants.baseUrl}/vetilac/$id',
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
-      );
+      final response = await _apiClient.dio.get('/vetilac/$id');
       return response.data;
     } catch (e) {
       return null;
@@ -188,10 +189,8 @@ class ProductRepository {
 
   // Ürünün Stok Geçmişini Getir
   Future<List<dynamic>> getProductStocks(String productId) async {
-    final token = await _storage.read(key: 'auth_token');
-    final response = await _dio.get(
+    final response = await _apiClient.dio.get(
       '${ApiConstants.products}/$productId/stocks',
-      options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
     return response.data;
   }
