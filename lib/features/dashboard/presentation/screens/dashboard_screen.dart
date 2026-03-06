@@ -6,6 +6,7 @@ import 'package:mobile/features/dashboard/presentation/widgets/charts/hourly_sal
 import 'package:mobile/features/dashboard/presentation/widgets/charts/responsive_chart_carousel.dart';
 import 'package:mobile/features/dashboard/presentation/widgets/charts/summary_pie_chart.dart';
 import 'package:mobile/features/dashboard/presentation/widgets/charts/weekly_sales_bar_chart.dart';
+import 'package:mobile/features/dashboard/presentation/widgets/dialogs/supplier_debt_dialog.dart';
 import 'package:mobile/features/dashboard/presentation/widgets/dialogs/transaction_master_dialog.dart';
 import 'package:mobile/features/dashboard/presentation/widgets/financial_stat_card.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -27,6 +28,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   Widget build(BuildContext context) {
     final dashboardAsyncValue = ref.watch(dashboardSummaryProvider);
     final chartsAsyncValue = ref.watch(dashboardChartsProvider);
+    final supplierSummary = ref.watch(supplierSummaryProvider);
     final currencyFormat = NumberFormat.currency(locale: 'tr_TR', symbol: '₺');
 
     return SingleChildScrollView(
@@ -119,13 +121,37 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                   ),
                             ),
                       ),
-                      StatCard(
-                        title: "Bugünkü Randevular",
-                        value: "${data.appointments.todayCount} Hasta",
-                        icon: Icons.calendar_today_outlined,
-                        color: Colors.purple,
-                        onTap: () {},
+                      supplierSummary.when(
+                        loading: () => const SizedBox(),
+                        error: (e, s) => const SizedBox(),
+                        data: (data) {
+                          return FinancialStatCard(
+                            title: "Tedarikçi Borçları",
+                            mainValue: currencyFormat.format(
+                              data.totalSupplierDebt,
+                            ),
+                            subValueLabel: "Açık Fatura:",
+                            subValue: "${data.openInvoiceCount}",
+                            icon: Icons.local_shipping_outlined,
+                            color: Colors.red,
+                            isDebtCard: true,
+                            onTap: () {
+                              showDialog(
+                                context: context,
+                                builder:
+                                    (context) => const SupplierDebtDialog(),
+                              );
+                            },
+                          );
+                        },
                       ),
+                      // StatCard(
+                      //   title: "Bugünkü Randevular",
+                      //   value: "${data.appointments.todayCount} Hasta",
+                      //   icon: Icons.calendar_today_outlined,
+                      //   color: Colors.purple,
+                      //   onTap: () {},
+                      // ),
                       StatCard(
                         title: "Kritik Stok",
                         value: "${data.inventory.criticalCount} Ürün",

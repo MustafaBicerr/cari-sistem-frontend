@@ -224,15 +224,26 @@ class _PurchaseItemsZoneState extends ConsumerState<PurchaseItemsZone> {
                       print("Tax Rate: ${selection['tax_rate']}");
                       print("=====================================");
 
-                      purchaseNotifier.addItem(
-                        selection['id'],
-                        selection['name'],
-                        selection['buy_price'],
-                        selection['sell_price'],
-                        selection['tax_rate'],
-                        selection['source'],
-                        selection['image_url'],
-                      );
+                      // purchaseNotifier.addItem(
+                      //   selection['id'],
+                      //   selection['name'],
+                      //   selection['buy_price'],
+                      //   selection['sell_price'],
+                      //   selection['tax_rate'],
+                      //   selection['source'],
+                      //   selection['image_url'],
+                      // );
+                      Future.microtask(() {
+                        purchaseNotifier.addItem(
+                          selection['id'],
+                          selection['name'],
+                          selection['buy_price'],
+                          selection['sell_price'],
+                          selection['tax_rate'],
+                          selection['source'],
+                          selection['image_url'],
+                        );
+                      });
 
                       _searchController?.clear();
                     },
@@ -484,7 +495,7 @@ class _PurchaseItemsZoneState extends ConsumerState<PurchaseItemsZone> {
                           ),
                         ),
                         Container(
-                          height: purchaseState.items.length > 10 ? 600 : 300,
+                          height: 600,
                           child:
                               purchaseState.items.isEmpty
                                   ? Center(

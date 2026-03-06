@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/legacy.dart';
 import 'package:mobile/core/api/api_client.dart';
 import 'package:uuid/uuid.dart';
 import '../../data/stock_repository.dart';
+import '../../../products/presentation/providers/product_provider.dart';
 
 final stockRepositoryProvider = Provider((ref) {
   final apiClient = ref.read(apiClientProvider);
@@ -208,8 +209,9 @@ class PurchaseFormState {
 // 3. NOTIFIER
 class PurchaseFormNotifier extends StateNotifier<PurchaseFormState> {
   final StockRepository _repo;
+  final Ref _ref;
 
-  PurchaseFormNotifier(this._repo)
+  PurchaseFormNotifier(this._repo, this._ref)
     : super(PurchaseFormState(invoiceDate: DateTime.now()));
 
   // Çarpıya basıldığında çağrılacak temizleme metodu
@@ -363,6 +365,7 @@ class PurchaseFormNotifier extends StateNotifier<PurchaseFormState> {
 
       await _repo.createPurchaseInvoice(payload);
       state = state.copyWith(isLoading: false);
+      _ref.invalidate(productListProvider); // Invalidate product list cache
       return true;
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
@@ -378,5 +381,5 @@ final purchaseFormProvider =
       ref,
     ) {
       final repo = ref.read(stockRepositoryProvider);
-      return PurchaseFormNotifier(repo);
+      return PurchaseFormNotifier(repo, ref);
     });

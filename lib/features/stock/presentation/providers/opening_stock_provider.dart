@@ -4,13 +4,14 @@ import 'package:mobile/core/api/api_client.dart';
 import '../../data/stock_repository.dart';
 import '../../domain/entities/opening_stock_entity.dart';
 import '../../domain/entities/opening_stock_item_entity.dart';
+import '../../../products/presentation/providers/product_provider.dart';
 
 final openingStockProvider =
     StateNotifierProvider<OpeningStockNotifier, OpeningStockState>((ref) {
       final apiClient = ref.read(apiClientProvider);
       final repository = StockRepository(apiClient);
 
-      return OpeningStockNotifier(repository);
+      return OpeningStockNotifier(repository, ref);
     });
 
 class OpeningStockState {
@@ -43,7 +44,8 @@ class OpeningStockState {
 
 class OpeningStockNotifier extends StateNotifier<OpeningStockState> {
   final StockRepository _repository;
-  OpeningStockNotifier(this._repository)
+  final Ref _ref;
+  OpeningStockNotifier(this._repository, this._ref)
     : super(OpeningStockState(entryDate: DateTime.now(), items: const []));
 
   // final StockRepository _repository = StockRepository();
@@ -118,6 +120,7 @@ class OpeningStockNotifier extends StateNotifier<OpeningStockState> {
 
       await _repository.createOpeningStock(json);
 
+      _ref.invalidate(productListProvider); // Invalidate product list cache
       state = OpeningStockState(entryDate: DateTime.now(), items: const []);
     } catch (e, stackTrace) {
       print("DEBUG: Error in submitOpeningStock: $e");

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile/core/api/api_client.dart';
 import 'package:mobile/features/dashboard/data/models/dashboard_summary_model.dart';
 import 'package:mobile/features/dashboard/data/models/dashboard_chart_model.dart'; // 👈 Import
+import 'package:mobile/features/dashboard/data/models/supplier_debt_model.dart';
 import 'package:mobile/features/dashboard/data/models/transaction_master_model.dart';
 import 'package:mobile/features/dashboard/data/models/turnover_detail_model.dart';
 import '../../data/dashboard_repository.dart';
@@ -41,4 +42,16 @@ final transactionMasterProvider = FutureProvider.autoDispose
       // 🧹 ARTIK TERTEMİZ: Logic Repository'de
       final repo = ref.read(dashboardRepositoryProvider);
       return repo.getTransactionMasterDetails(date);
+    });
+
+final supplierSummaryProvider =
+    FutureProvider.autoDispose<SupplierDebtSummaryModel>((ref) async {
+      final repo = ref.read(dashboardRepositoryProvider);
+      return repo.getSupplierSummary();
+    });
+
+final supplierMasterProvider =
+    FutureProvider.autoDispose<List<SupplierDebtMasterModel>>((ref) async {
+      final repo = ref.read(dashboardRepositoryProvider);
+      return repo.getSupplierMaster();
     });

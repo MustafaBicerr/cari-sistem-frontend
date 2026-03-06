@@ -161,7 +161,10 @@ class _OpeningStockItemsZoneState extends ConsumerState<OpeningStockItemsZone> {
                         vatRate: 0,
                       );
 
-                      openingNotifier.addItem(newItem);
+                      // openingNotifier.addItem(newItem);
+                      Future.microtask(() {
+                        openingNotifier.addItem(newItem);
+                      });
                       _searchController?.clear();
                     },
                     fieldViewBuilder: (
@@ -334,13 +337,7 @@ class _OpeningStockItemsZoneState extends ConsumerState<OpeningStockItemsZone> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 // Fixed height container with ListView.builder for virtual scrolling
-                constraints: BoxConstraints(
-                  maxHeight:
-                      openingState.items.length > 10
-                          ? 600 // Fixed height for scrolling
-                          : double
-                              .maxFinite, // Let it grow naturally for fewer items
-                ),
+                constraints: const BoxConstraints(maxHeight: 600),
                 child: SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: SizedBox(

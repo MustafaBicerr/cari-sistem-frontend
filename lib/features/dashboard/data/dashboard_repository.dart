@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:mobile/features/dashboard/data/models/dashboard_chart_model.dart';
+import 'package:mobile/features/dashboard/data/models/supplier_debt_model.dart';
 import 'package:mobile/features/dashboard/data/models/transaction_master_model.dart';
 import 'package:mobile/features/dashboard/data/models/turnover_detail_model.dart';
 import '../../../../core/api/api_client.dart';
@@ -108,6 +109,36 @@ class DashboardRepository {
       }
     } on DioException catch (e) {
       debugPrint("🔴 [REPO] Hata: ${e.message}");
+      throw Exception(e.response?.data['error'] ?? 'Bağlantı hatası');
+    }
+  }
+
+  Future<SupplierDebtSummaryModel> getSupplierSummary() async {
+    try {
+      final response = await _apiClient.dio.get('/dashboard/suppliers');
+
+      if (response.statusCode == 200) {
+        return SupplierDebtSummaryModel.fromJson(response.data);
+      } else {
+        throw Exception('Supplier summary alınamadı');
+      }
+    } on DioException catch (e) {
+      throw Exception(e.response?.data['error'] ?? 'Bağlantı hatası');
+    }
+  }
+
+  Future<List<SupplierDebtMasterModel>> getSupplierMaster() async {
+    try {
+      final response = await _apiClient.dio.get('/dashboard/suppliers-master');
+
+      if (response.statusCode == 200) {
+        final List data = response.data['data'];
+
+        return data.map((e) => SupplierDebtMasterModel.fromJson(e)).toList();
+      } else {
+        throw Exception('Supplier detayları alınamadı');
+      }
+    } on DioException catch (e) {
       throw Exception(e.response?.data['error'] ?? 'Bağlantı hatası');
     }
   }
