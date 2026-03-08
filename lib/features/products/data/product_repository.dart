@@ -162,25 +162,31 @@ class ProductRepository {
     }
   }
 
-  // --- VETILAC & STOK EKSTRALARI ---
+  // --- REFERANS İLAÇ KATALOĞU (master_drugs_table) & STOK ---
 
-  // İlaç Arama (Autocomplete için)
-  Future<List<Map<String, dynamic>>> searchVetilac(String query) async {
+  // Referans ilaç arama (Autocomplete için)
+  Future<List<Map<String, dynamic>>> searchMasterDrugs(String query) async {
     try {
       final response = await _apiClient.dio.get(
-        '/vetilac/search',
+        '/master-drugs/search',
         queryParameters: {'q': query},
       );
-      return List<Map<String, dynamic>>.from(response.data);
+      final data = response.data;
+      if (data == null || data is! List) return [];
+      return List<Map<String, dynamic>>.from(data as List);
+    } on DioException catch (e) {
+      debugPrint('[searchMasterDrugs] API error: ${e.response?.statusCode}');
+      return [];
     } catch (e) {
-      return []; // Hata durumunda boş liste dön, akışı bozma
+      debugPrint('[searchMasterDrugs] Error: $e');
+      return [];
     }
   }
 
-  // İlaç Detayı Getir
-  Future<Map<String, dynamic>?> getVetilacDetails(String id) async {
+  // Referans ilaç detayı getir
+  Future<Map<String, dynamic>?> getMasterDrugDetails(String id) async {
     try {
-      final response = await _apiClient.dio.get('/vetilac/$id');
+      final response = await _apiClient.dio.get('/master-drugs/$id');
       return response.data;
     } catch (e) {
       return null;

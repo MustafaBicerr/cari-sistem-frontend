@@ -41,7 +41,7 @@ class Product {
     this.buyingPriceHistory = const [],
   });
 
-  // Vetilac verilerine kolay erişim için getter'lar
+  // Referans ilaç verilerine kolay erişim için getter'lar
   String? get prospectus => localDetails?['prospectus'];
   List<dynamic>? get relatedDrugs => localDetails?['related_drugs'];
   Map<String, dynamic>? get drugDetails => localDetails?['details'];

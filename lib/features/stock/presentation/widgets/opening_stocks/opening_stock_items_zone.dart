@@ -70,22 +70,22 @@ class _OpeningStockItemsZoneState extends ConsumerState<OpeningStockItemsZone> {
       final localNameSet =
           localProducts.map((p) => p.name.toLowerCase().trim()).toSet();
 
-      // GLOBAL (VETILAC) SEARCH
-      final vetilacController = ref.read(productControllerProvider);
-      final vetilacRes = await vetilacController.searchVetilac(query);
+      // GLOBAL (REFERANS KATALOĞU) ARAMA
+      final productController = ref.read(productControllerProvider);
+      final masterDrugsRes = await productController.searchMasterDrugs(query);
 
-      final vetilacMatches =
-          vetilacRes
+      final masterDrugsMatches =
+          masterDrugsRes
               .where((v) {
                 final globalName =
-                    v['raw_name'].toString().toLowerCase().trim();
+                    (v['name'] ?? '').toString().toLowerCase().trim();
                 final existsLocally = localNameSet.contains(globalName);
                 return !existsLocally;
               })
               .map((v) {
                 return {
                   'id': v['id'],
-                  'name': v['raw_name'],
+                  'name': v['name'],
                   'image_url': ImageUtils.getImageUrl(
                     v['image_path']?.toString(),
                     v['full_image_url']?.toString(),
@@ -95,7 +95,7 @@ class _OpeningStockItemsZoneState extends ConsumerState<OpeningStockItemsZone> {
               })
               .toList();
 
-      return [...localMatches, ...vetilacMatches];
+      return [...localMatches, ...masterDrugsMatches];
     } finally {
       setState(() => _isSearching = false);
     }
@@ -287,7 +287,7 @@ class _OpeningStockItemsZoneState extends ConsumerState<OpeningStockItemsZone> {
                                   subtitle: Text(
                                     isLocal
                                         ? "Klinikte Kayıtlı"
-                                        : "Vetilac'tan Bulundu",
+                                        : "Referans kataloğundan",
                                     style: const TextStyle(fontSize: 12),
                                   ),
                                   onTap: () => onSelected(option),

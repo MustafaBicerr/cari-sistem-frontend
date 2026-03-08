@@ -349,7 +349,7 @@ class _ProductFormDialogState extends ConsumerState<ProductFormDialog>
           criticalStockLevel: double.tryParse(_criticalStockCtrl.text) ?? 10,
           detailsMap: rawDetailsMap,
           userNotes: _notesCtrl.text.trim(),
-          vetilacImagePath:
+          referenceImagePath:
               _selectedImage == null ? _selectedRelativePath : null,
           image: _selectedImage,
           onSuccess:
@@ -618,7 +618,7 @@ class _ProductFormDialogState extends ConsumerState<ProductFormDialog>
           const SizedBox(height: 24),
 
           if (!isEditing)
-            _buildVetilacAutocomplete()
+            _buildReferenceDrugAutocomplete()
           else
             TextFormField(
               controller: _nameCtrl,
@@ -896,7 +896,7 @@ class _ProductFormDialogState extends ConsumerState<ProductFormDialog>
     );
   }
 
-  Widget _buildVetilacAutocomplete() {
+  Widget _buildReferenceDrugAutocomplete() {
     return LayoutBuilder(
       builder: (context, constraints) {
         return RawAutocomplete<Map<String, dynamic>>(
@@ -904,11 +904,11 @@ class _ProductFormDialogState extends ConsumerState<ProductFormDialog>
             if (textEditingValue.text.length < 2) return [];
             return await ref
                 .read(productControllerProvider)
-                .searchVetilac(textEditingValue.text);
+                .searchMasterDrugs(textEditingValue.text);
           },
-          displayStringForOption: (option) => option['raw_name'],
+          displayStringForOption: (option) => option['name'],
           onSelected: (selection) async {
-            _nameCtrl.text = selection['raw_name'];
+            _nameCtrl.text = selection['name'];
             _normalizedName = selection['normalized_name'];
             _selectedRelativePath = selection['image_path'];
             _networkImageUrl =
@@ -919,7 +919,7 @@ class _ProductFormDialogState extends ConsumerState<ProductFormDialog>
 
             final data = await ref
                 .read(productControllerProvider)
-                .getVetilacDetails(selection['id']);
+                .getMasterDrugDetails(selection['id']);
             if (data != null && data['details'] != null) {
               final d = data['details'];
               _groupCtrl.text = d['Grup'] ?? '';
@@ -1042,7 +1042,7 @@ class _ProductFormDialogState extends ConsumerState<ProductFormDialog>
                                   ),
                         ),
                         title: Text(
-                          option['raw_name'],
+                          option['name'],
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 15,

@@ -51,7 +51,7 @@ class ProductSearchService {
             data.map<Map<String, dynamic>>((p) {
               return {
                 "id": p["id"],
-                "name": p["raw_name"] ?? p["name"],
+                "name": p["name"] ?? p["raw_name"],
                 "barcode": p["barcode"],
                 "source": "global",
                 "product": p,

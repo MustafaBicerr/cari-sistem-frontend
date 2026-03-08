@@ -104,17 +104,18 @@ class _PurchaseItemsZoneState extends ConsumerState<PurchaseItemsZone> {
     }
 
     // ------------------------------------------------------
-    // 2️⃣ GLOBAL (VETILAC) SEARCH
+    // 2️⃣ GLOBAL (REFERANS KATALOĞU) ARAMA
     // ------------------------------------------------------
-    final vetilacController = ref.read(productControllerProvider);
-    final vetilacRes = await vetilacController.searchVetilac(query);
+    final productController = ref.read(productControllerProvider);
+    final masterDrugsRes = await productController.searchMasterDrugs(query);
 
-    print("☁️ GLOBAL RAW RESULT (${vetilacRes.length})");
+    print("☁️ GLOBAL RAW RESULT (${masterDrugsRes.length})");
 
-    final vetilacMatches =
-        vetilacRes
+    final masterDrugsMatches =
+        masterDrugsRes
             .where((v) {
-              final globalName = v['raw_name'].toString().toLowerCase().trim();
+              final globalName =
+                  (v['name'] ?? '').toString().toLowerCase().trim();
 
               final existsLocally = localNameSet.contains(globalName);
 
@@ -127,7 +128,7 @@ class _PurchaseItemsZoneState extends ConsumerState<PurchaseItemsZone> {
             .map((v) {
               return {
                 'id': v['id'],
-                'name': v['raw_name'],
+                'name': v['name'],
                 'buy_price': 0.0,
                 'sell_price': 0.0,
                 'tax_rate': 10.0,
@@ -142,7 +143,7 @@ class _PurchaseItemsZoneState extends ConsumerState<PurchaseItemsZone> {
 
     setState(() => _isSearching = false);
 
-    return [...localMatches, ...vetilacMatches];
+    return [...localMatches, ...masterDrugsMatches];
   }
 
   @override
@@ -373,7 +374,7 @@ class _PurchaseItemsZoneState extends ConsumerState<PurchaseItemsZone> {
                                   subtitle: Text(
                                     isLocal
                                         ? "Klinikte Kayıtlı"
-                                        : "Vetilac'tan Bulundu",
+                                        : "Referans kataloğundan",
                                     style: const TextStyle(fontSize: 12),
                                   ),
                                   onTap: () => onSelected(option),

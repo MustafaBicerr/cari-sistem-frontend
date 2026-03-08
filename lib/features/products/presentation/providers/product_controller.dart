@@ -63,7 +63,7 @@ class ProductController {
     // 🔥 Değişiklik: UI artık ham verileri gönderiyor, JSON'ı biz kuruyoruz
     required Map<String, dynamic> detailsMap,
     required String userNotes,
-    String? vetilacImagePath,
+    String? referenceImagePath,
     XFile? image,
     required void Function() onSuccess,
     required void Function(String error) onError,
@@ -99,8 +99,8 @@ class ProductController {
         "local_details": standardizedLocalDetails, // Standart veri
       };
 
-      if (vetilacImagePath != null) {
-        newProduct["custom_image_path"] = vetilacImagePath;
+      if (referenceImagePath != null) {
+        newProduct["custom_image_path"] = referenceImagePath;
       }
 
       await repo.createProduct(newProduct, imageFile: image);
@@ -204,14 +204,14 @@ class ProductController {
     }
   }
 
-  // --- STOK ve DIŞ API METODLARI ---
+  // --- STOK ve REFERANS KATALOĞU API ---
 
-  Future<List<Map<String, dynamic>>> searchVetilac(String query) {
-    return _ref.read(productRepositoryProvider).searchVetilac(query);
+  Future<List<Map<String, dynamic>>> searchMasterDrugs(String query) {
+    return _ref.read(productRepositoryProvider).searchMasterDrugs(query);
   }
 
-  Future<Map<String, dynamic>?> getVetilacDetails(String id) {
-    return _ref.read(productRepositoryProvider).getVetilacDetails(id);
+  Future<Map<String, dynamic>?> getMasterDrugDetails(String id) {
+    return _ref.read(productRepositoryProvider).getMasterDrugDetails(id);
   }
 
   Future<List<dynamic>> getProductStocks(String productId) {
