@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/navigation/app_router.dart';
 import 'core/theme/app_colors.dart';
+import 'features/auth/presentation/providers/auth_controller.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
@@ -16,6 +17,7 @@ class MyApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.read(registerAuthSessionExpiredProvider);
     final router = ref.watch(appRouterProvider);
     return MaterialApp.router(
       title: 'Cari Sistem',
