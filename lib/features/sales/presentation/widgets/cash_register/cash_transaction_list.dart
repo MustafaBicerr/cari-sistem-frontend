@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
-import 'package:mobile/core/theme/app_colors.dart';
 import 'package:mobile/features/dashboard/presentation/widgets/expandable_transaction_card.dart';
 import '../../providers/cash_register_provider.dart';
 
@@ -10,10 +8,10 @@ class CashTransactionList extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(cashRegisterProvider);
     final notifier = ref.read(cashRegisterProvider.notifier);
-    final transactions = notifier.filteredTransactions; // Filtrelenmiş liste
-    final currencyFormat = NumberFormat.currency(locale: 'tr_TR', symbol: '₺');
-    final timeFormat = DateFormat('HH:mm');
+    final transactions = notifier.filteredTransactions;
+    final hasSearch = state.customerSearchQuery.trim().isNotEmpty;
 
     if (transactions.isEmpty) {
       return Center(
@@ -21,14 +19,17 @@ class CashTransactionList extends ConsumerWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              Icons.receipt_long,
+              hasSearch ? Icons.person_search : Icons.receipt_long,
               size: 64,
               color: Colors.grey.withOpacity(0.3),
             ),
             const SizedBox(height: 16),
             Text(
-              "Bu tarih için işlem bulunamadı.",
+              hasSearch
+                  ? "Arama kriterine uygun işlem yok."
+                  : "Bu tarih için işlem bulunamadı.",
               style: TextStyle(color: Colors.grey.shade500),
+              textAlign: TextAlign.center,
             ),
           ],
         ),

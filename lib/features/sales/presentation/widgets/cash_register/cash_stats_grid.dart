@@ -53,11 +53,11 @@ class CashStatsGrid extends ConsumerWidget {
               // trend: "Toplam Harcama",
               // isPositive: false,
             ),
-            // 4. NET DURUM
+            // 4. NET KASA (Nakit + Kart - Gider)
             StatCard(
               title: "Net Kasa",
               value:
-                  "₺${(state.dailyCashBalance + state.dailyCardBalance).toStringAsFixed(2)}",
+                  "₺${(state.dailyCashBalance + state.dailyCardBalance - state.dailyExpense).toStringAsFixed(2)}",
               icon: Icons.account_balance_wallet,
               color: Colors.blueGrey,
               // trend: "Toplam Varlık",

@@ -1,17 +1,62 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile/core/theme/app_colors.dart';
+import '../../providers/cash_register_provider.dart';
 
-class AddExpenseDialog extends StatefulWidget {
+class AddExpenseDialog extends ConsumerStatefulWidget {
   const AddExpenseDialog({super.key});
 
   @override
-  State<AddExpenseDialog> createState() => _AddExpenseDialogState();
+  ConsumerState<AddExpenseDialog> createState() => _AddExpenseDialogState();
 }
 
-class _AddExpenseDialogState extends State<AddExpenseDialog> {
+class _AddExpenseDialogState extends ConsumerState<AddExpenseDialog> {
   final _amountCtrl = TextEditingController();
   final _descCtrl = TextEditingController();
   String _method = 'CASH';
+  bool _isSubmitting = false;
+
+  @override
+  void dispose() {
+    _amountCtrl.dispose();
+    _descCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final amount = double.tryParse(_amountCtrl.text.trim());
+    if (amount == null || amount <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Geçerli bir tutar girin.")),
+      );
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+
+    try {
+      final repo = ref.read(financeRepositoryProvider);
+      await repo.addExpense(
+        amount: amount,
+        paymentMethod: _method,
+        description: _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
+      );
+
+      if (!mounted) return;
+      ref.read(cashRegisterProvider.notifier).loadDailyData();
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Masraf kaydı oluşturuldu.")),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Hata: ${e.toString()}")),
+      );
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -59,25 +104,25 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
                 child: Text("Şirket Kartı"),
               ),
             ],
-            onChanged: (val) => setState(() => _method = val!),
+            onChanged: _isSubmitting ? null : (val) => setState(() => _method = val!),
           ),
         ],
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(context),
+          onPressed: _isSubmitting ? null : () => Navigator.pop(context),
           child: const Text("İptal"),
         ),
         ElevatedButton(
-          onPressed: () {
-            // TODO: Backend'e gönder
-            Navigator.pop(context);
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text("Masraf kaydedildi (Demo)")),
-            );
-          },
+          onPressed: _isSubmitting ? null : _submit,
           style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
-          child: const Text("KAYDET", style: TextStyle(color: Colors.white)),
+          child: _isSubmitting
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                )
+              : const Text("KAYDET", style: TextStyle(color: Colors.white)),
         ),
       ],
     );

@@ -19,9 +19,16 @@ class TransactionMasterModel {
   final String customerName;
   final String customerPhone;
   final String cashierName;
+  final String customerNormalizedName;
 
   // Ürünler
   final List<MasterItem> items;
+
+  /// 'SALE' | 'COLLECTION' | 'EXPENSE'
+  final String entryType;
+
+  bool get isIncome => entryType == 'SALE' || entryType == 'COLLECTION';
+  bool get isExpense => entryType == 'EXPENSE';
 
   TransactionMasterModel({
     required this.id,
@@ -41,6 +48,8 @@ class TransactionMasterModel {
     required this.items,
     required this.collectedCash,
     required this.collectedCard,
+    this.customerNormalizedName = '',
+    this.entryType = 'SALE',
   });
 
   factory TransactionMasterModel.fromJson(Map<String, dynamic> json) {
@@ -64,6 +73,8 @@ class TransactionMasterModel {
       customerName: json['customer_name']?.toString() ?? 'Misafir',
       customerPhone: json['customer_phone']?.toString() ?? '',
       cashierName: json['cashier_name']?.toString() ?? 'Sistem',
+      customerNormalizedName: json['customer_normalized_name']?.toString() ?? '',
+      entryType: json['entry_type']?.toString() ?? 'SALE',
 
       items:
           (json['items'] as List?)

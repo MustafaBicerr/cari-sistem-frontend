@@ -42,6 +42,12 @@ class ApiConstants {
   // Sales Endpoints
   static const String sales = '/sales';
 
+  // Finance / Cash register
+  static const String financeExpenses = '/finance/expenses';
+  static const String financeCollections = '/finance/collections';
+  static const String financeCustomerDebtSummary = '/finance/customers'; // /:customerId/debt-summary
+  static const String financeTransactionDetail = '/finance/transactions'; // /:transactionId
+
   // Endpoints
   static const String dashboardTurnoverDetails = '/dashboard/turnover-details';
   static const String dashboardInflationDetails =

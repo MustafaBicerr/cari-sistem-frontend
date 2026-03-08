@@ -6,6 +6,7 @@ import '../widgets/cash_register/add_expense_dialog.dart';
 import '../widgets/cash_register/cash_date_header.dart';
 import '../widgets/cash_register/cash_stats_grid.dart';
 import '../widgets/cash_register/cash_transaction_list.dart';
+import '../widgets/cash_register/collection_dialog.dart';
 
 class CashRegisterScreen extends ConsumerWidget {
   const CashRegisterScreen({super.key});
@@ -75,10 +76,13 @@ class CashRegisterScreen extends ConsumerWidget {
 
                 const SizedBox(width: 16),
 
-                // Tahsilat Butonu (Navigasyon yapılabilir)
+                // Tahsilat Butonu
                 ElevatedButton.icon(
                   onPressed: () {
-                    // Müşteri listesine veya Tahsilat dialoguna yönlendir
+                    showDialog(
+                      context: context,
+                      builder: (_) => const CollectionDialog(),
+                    );
                   },
                   icon: const Icon(Icons.add_circle, color: Colors.white),
                   label: const Text(
@@ -123,7 +127,38 @@ class CashRegisterScreen extends ConsumerWidget {
 
             const SizedBox(height: 16),
 
-            // 4. İŞLEM LİSTESİ
+            // 4. MÜŞTERİ ARAMA (Liste filtresi)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                  ),
+                ],
+              ),
+              child: TextField(
+                onChanged: (v) => notifier.setCustomerSearchQuery(v),
+                decoration: InputDecoration(
+                  hintText: "Müşteri adına göre filtrele...",
+                  prefixIcon: const Icon(Icons.person_search, color: AppColors.textSecondary),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  filled: true,
+                  fillColor: Colors.grey.shade50,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            // 5. İŞLEM LİSTESİ
             if (state.isLoading)
               const Center(
                 child: Padding(

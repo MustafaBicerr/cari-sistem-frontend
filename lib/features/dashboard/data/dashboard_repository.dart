@@ -67,8 +67,24 @@ class DashboardRepository {
     }
   }
 
+  // Kasa ekranı: Satış + Tahsilat + Masraf (tek liste, entry_type ile)
+  Future<List<TransactionMasterModel>> getCashRegisterDaily(String? date) async {
+    try {
+      final path = date != null
+          ? '/dashboard/cash-register-daily?date=$date'
+          : '/dashboard/cash-register-daily';
+      final response = await _apiClient.dio.get(path);
+      if (response.statusCode == 200) {
+        final List data = response.data as List;
+        return data.map((e) => TransactionMasterModel.fromJson(e)).toList();
+      }
+      throw Exception('Kasa günlük verisi alınamadı');
+    } on DioException catch (e) {
+      throw Exception(e.response?.data['error'] ?? 'Bağlantı hatası');
+    }
+  }
+
   // 4. 🚀 MASTER TRANSACTION EXPLORER (Yeni Master Dialog İçin)
-  // 4. 🚀 MASTER TRANSACTION EXPLORER
   Future<List<TransactionMasterModel>> getTransactionMasterDetails(
     String? date,
   ) async {

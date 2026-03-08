@@ -66,9 +66,17 @@ class _ExpandableTransactionCardState extends State<ExpandableTransactionCard> {
   Widget build(BuildContext context) {
     final t = widget.transaction;
     final currency = NumberFormat.currency(locale: 'tr_TR', symbol: '₺');
-    final isIncome = t.totalAmount >= 0; // Veya logic'e göre değişebilir
+    final isIncome = t.isIncome;
+    final isExpense = t.isExpense;
+    final isCollection = t.entryType == 'COLLECTION';
 
-    // Enflasyon farkı hesaplama (Basitçe)
+    String title = t.customerName.isEmpty ? 'Misafir Müşteri' : t.customerName;
+    if (isExpense) title = t.description.isEmpty ? 'Masraf' : t.description;
+
+    String subtitle = "${t.timeStr} • ${t.paymentMethod} • ${t.cashierName}";
+    if (isCollection) subtitle = "Tahsilat • $subtitle";
+    if (isExpense) subtitle = "${t.timeStr} • ${t.paymentMethod}";
+
     double totalInflationDiff = 0;
     for (var item in t.items) {
       if (item.paymentStatus == 'UNPAID' &&
@@ -78,15 +86,16 @@ class _ExpandableTransactionCardState extends State<ExpandableTransactionCard> {
       }
     }
 
+    final canExpand = t.items.isNotEmpty;
+
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Column(
         children: [
-          // 1. BAŞLIK SATIRI (Tıklanabilir)
           ListTile(
-            onTap: () => setState(() => _isExpanded = !_isExpanded),
+            onTap: canExpand ? () => setState(() => _isExpanded = !_isExpanded) : null,
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 16,
               vertical: 4,
@@ -97,17 +106,19 @@ class _ExpandableTransactionCardState extends State<ExpandableTransactionCard> {
                       ? AppColors.success.withOpacity(0.1)
                       : AppColors.error.withOpacity(0.1),
               child: Icon(
-                isIncome ? Icons.arrow_downward : Icons.arrow_upward,
+                isCollection
+                    ? Icons.payments
+                    : isExpense
+                        ? Icons.arrow_upward
+                        : Icons.arrow_downward,
                 color: isIncome ? AppColors.success : AppColors.error,
               ),
             ),
             title: Text(
-              t.customerName.isEmpty ? 'Misafir Müşteri' : t.customerName,
+              title,
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
-            subtitle: Text(
-              "${t.timeStr} • ${t.paymentMethod} • ${t.cashierName}",
-            ),
+            subtitle: Text(subtitle),
             trailing: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.end,
@@ -120,17 +131,17 @@ class _ExpandableTransactionCardState extends State<ExpandableTransactionCard> {
                     color: isIncome ? AppColors.success : AppColors.error,
                   ),
                 ),
-                Icon(
-                  _isExpanded ? Icons.expand_less : Icons.expand_more,
-                  size: 18,
-                  color: Colors.grey,
-                ),
+                if (canExpand)
+                  Icon(
+                    _isExpanded ? Icons.expand_less : Icons.expand_more,
+                    size: 18,
+                    color: Colors.grey,
+                  ),
               ],
             ),
           ),
 
-          // 2. DETAY ALANI (Accordion)
-          if (_isExpanded)
+          if (_isExpanded && canExpand)
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
