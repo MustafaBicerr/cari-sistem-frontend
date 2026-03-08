@@ -16,8 +16,7 @@ class OpeningStockTableRow extends ConsumerWidget {
   final DateTime? expirationDate;
   final Function(DateTime) onDateChanged;
 
-  // Fixed row height to avoid IntrinsicHeight calculations
-  static const double rowHeight = 60.0;
+  static const double rowHeight = 64.0;
 
   const OpeningStockTableRow({
     super.key,
@@ -267,7 +266,7 @@ class OpeningStockTableRow extends ConsumerWidget {
       controller: controller,
       hint: hint,
       onChanged: onChanged,
-      // keyboardType: keyboardType,
+      keyboardType: keyboardType,
     );
   }
 

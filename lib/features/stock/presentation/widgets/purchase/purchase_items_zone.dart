@@ -451,14 +451,20 @@ class _PurchaseItemsZoneState extends ConsumerState<PurchaseItemsZone> {
                   border: Border.all(color: Colors.grey.shade300),
                   borderRadius: BorderRadius.circular(12),
                 ),
+                constraints: const BoxConstraints(maxHeight: 560),
                 child: SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: SizedBox(
                     width: 1050,
                     child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          constraints: const BoxConstraints(minHeight: 56),
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 10,
+                            horizontal: 4,
+                          ),
                           decoration: BoxDecoration(
                             color: AppColors.primary.withOpacity(0.1),
                             borderRadius: const BorderRadius.vertical(
@@ -495,36 +501,30 @@ class _PurchaseItemsZoneState extends ConsumerState<PurchaseItemsZone> {
                             ],
                           ),
                         ),
-                        Container(
-                          height: 600,
-                          child:
-                              purchaseState.items.isEmpty
-                                  ? Center(
-                                    child: Text(
-                                      'Ürün eklemek için yukarıdan ara ve seçin',
-                                      style: TextStyle(color: Colors.grey),
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(maxHeight: 504),
+                          child: ListView.builder(
+                            shrinkWrap: true,
+                            physics: const ClampingScrollPhysics(),
+                            itemCount: purchaseState.items.length,
+                            itemBuilder: (context, index) {
+                              final item = purchaseState.items[index];
+                              return PurchaseTableRow(
+                                key: ValueKey(item.uiId),
+                                item: item,
+                                onChanged:
+                                    (updatedItem) =>
+                                        purchaseNotifier.updateItem(
+                                          item.uiId,
+                                          updatedItem,
+                                        ),
+                                onDelete:
+                                    () => purchaseNotifier.removeItem(
+                                      item.uiId,
                                     ),
-                                  )
-                                  : ListView.builder(
-                                    itemCount: purchaseState.items.length,
-                                    itemBuilder: (context, index) {
-                                      final item = purchaseState.items[index];
-                                      return PurchaseTableRow(
-                                        key: ValueKey(item.uiId),
-                                        item: item,
-                                        onChanged:
-                                            (updatedItem) =>
-                                                purchaseNotifier.updateItem(
-                                                  item.uiId,
-                                                  updatedItem,
-                                                ),
-                                        onDelete:
-                                            () => purchaseNotifier.removeItem(
-                                              item.uiId,
-                                            ),
-                                      );
-                                    },
-                                  ),
+                              );
+                            },
+                          ),
                         ),
                       ],
                     ),
@@ -556,16 +556,20 @@ class _HeaderCell extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: width,
-      padding: const EdgeInsets.symmetric(horizontal: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+      alignment: Alignment.center,
       decoration: BoxDecoration(
         border: Border(right: BorderSide(color: Colors.grey.shade300)),
       ),
       child: Text(
         title,
-        textAlign: TextAlign.left,
+        textAlign: TextAlign.center,
+        maxLines: 2,
+        overflow: TextOverflow.visible,
         style: TextStyle(
           fontWeight: FontWeight.bold,
-          fontSize: 13,
+          fontSize: 12,
+          height: 1.25,
           color: color ?? Colors.black87,
         ),
       ),

@@ -1,3 +1,4 @@
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
@@ -59,10 +60,16 @@ class _RowControllers {
 class PurchaseItemsNotifier extends StateNotifier<PurchaseItemsState> {
   PurchaseItemsNotifier() : super(const PurchaseItemsState(controllers: {}));
 
-  /// Get or create controllers for a row
+  final Map<String, _RowControllers> _pendingControllers = {};
+
+  /// Get or create controllers for a row. New controllers are registered
+  /// after the current frame to avoid "setState during build".
   _RowControllers getRowControllers(String uiId, PurchaseItemState item) {
     if (state.controllers.containsKey(uiId)) {
       return state.controllers[uiId]!;
+    }
+    if (_pendingControllers.containsKey(uiId)) {
+      return _pendingControllers[uiId]!;
     }
 
     final ctrls = _RowControllers(
@@ -77,7 +84,15 @@ class PurchaseItemsNotifier extends StateNotifier<PurchaseItemsState> {
       taxCtrl: TextEditingController(text: item.taxRate.toString()),
     );
 
-    state = state.copyWith(controllers: {...state.controllers, uiId: ctrls});
+    _pendingControllers[uiId] = ctrls;
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      _pendingControllers.remove(uiId);
+      if (!state.controllers.containsKey(uiId)) {
+        state = state.copyWith(
+          controllers: {...state.controllers, uiId: ctrls},
+        );
+      }
+    });
 
     return ctrls;
   }

@@ -1,3 +1,4 @@
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
@@ -61,10 +62,17 @@ class OpeningStockItemsNotifier extends StateNotifier<OpeningStockItemsState> {
   OpeningStockItemsNotifier()
     : super(const OpeningStockItemsState(controllers: {}, dirtyRows: {}));
 
-  /// Get or create controllers for a row
+  /// Pending controllers created during build; moved to state after frame.
+  final Map<int, _RowControllers> _pendingControllers = {};
+
+  /// Get or create controllers for a row. New controllers are registered
+  /// in state after the current frame to avoid "setState during build".
   _RowControllers getRowControllers(int rowIndex, OpeningStockItemEntity item) {
     if (state.controllers.containsKey(rowIndex)) {
       return state.controllers[rowIndex]!;
+    }
+    if (_pendingControllers.containsKey(rowIndex)) {
+      return _pendingControllers[rowIndex]!;
     }
 
     final ctrls = _RowControllers(
@@ -76,9 +84,15 @@ class OpeningStockItemsNotifier extends StateNotifier<OpeningStockItemsState> {
       locationCtrl: TextEditingController(text: item.location ?? ''),
     );
 
-    state = state.copyWith(
-      controllers: {...state.controllers, rowIndex: ctrls},
-    );
+    _pendingControllers[rowIndex] = ctrls;
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      _pendingControllers.remove(rowIndex);
+      if (!state.controllers.containsKey(rowIndex)) {
+        state = state.copyWith(
+          controllers: {...state.controllers, rowIndex: ctrls},
+        );
+      }
+    });
 
     return ctrls;
   }

@@ -345,10 +345,13 @@ class _OpeningStockItemsZoneState extends ConsumerState<OpeningStockItemsZone> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        // TABLE HEADER (Fixed)
+                        // TABLE HEADER (2 satırlık başlıklar tam görünsün)
                         Container(
-                          height: 50,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          constraints: const BoxConstraints(minHeight: 56),
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 10,
+                            horizontal: 4,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.blue.withOpacity(0.1),
                             borderRadius: const BorderRadius.vertical(
