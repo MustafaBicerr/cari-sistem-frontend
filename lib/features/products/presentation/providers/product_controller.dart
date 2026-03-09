@@ -46,6 +46,20 @@ class ProductController {
     }
   }
 
+  Product? findProductById(String id) {
+    final productsState = _ref.read(productListProvider);
+    final products = productsState.asData?.value ?? [];
+    try {
+      return products.firstWhere((p) => p.id == id);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  void invalidateProductList() {
+    _ref.invalidate(productListProvider);
+  }
+
   void searchProducts(String query) {
     _ref.read(searchQueryProvider.notifier).state = query;
   }

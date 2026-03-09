@@ -3,15 +3,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:mobile/core/services/item_zone_table_view.dart';
+import 'package:mobile/core/theme/app_colors.dart';
 import 'package:mobile/core/utils/image_utils.dart';
 import 'package:mobile/features/stock/domain/entities/opening_stock_item_entity.dart';
+import 'package:mobile/shared/widgets/barcode_scanner_sheet.dart';
 import '../../../../products/presentation/providers/product_provider.dart';
 import '../../../../products/presentation/providers/product_controller.dart';
 import '../../providers/opening_stock_provider.dart';
 import 'opening_stock_table_row.dart';
 
 class OpeningStockItemsZone extends ConsumerStatefulWidget {
-  const OpeningStockItemsZone({super.key});
+  final void Function(String barcode)? onBarcodeScanned;
+
+  const OpeningStockItemsZone({super.key, this.onBarcodeScanned});
 
   @override
   ConsumerState<OpeningStockItemsZone> createState() =>
@@ -188,7 +192,18 @@ class _OpeningStockItemsZoneState extends ConsumerState<OpeningStockItemsZone> {
                                       strokeWidth: 2,
                                     ),
                                   )
-                                  : null,
+                                  : (widget.onBarcodeScanned != null
+                                      ? IconButton(
+                                          icon: const Icon(Icons.qr_code_scanner, color: AppColors.primary),
+                                          tooltip: "Kamera ile barkod tara",
+                                          onPressed: () {
+                                            BarcodeScannerSheet.show(
+                                              context,
+                                              onScanned: widget.onBarcodeScanned!,
+                                            );
+                                          },
+                                        )
+                                      : null),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),

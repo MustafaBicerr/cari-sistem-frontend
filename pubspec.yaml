@@ -52,6 +52,7 @@ dependencies:
   flutter_localizations:
     sdk: flutter
   equatable: ^2.0.8
+  mobile_scanner: ^6.0.2
 
 dev_dependencies:
   flutter_test:

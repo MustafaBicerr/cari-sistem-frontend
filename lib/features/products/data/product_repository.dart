@@ -193,6 +193,29 @@ class ProductRepository {
     }
   }
 
+  // Barkod güncelle (products.barcode)
+  Future<void> updateProductBarcode(String productId, String barcode) async {
+    await _apiClient.dio.patch(
+      '${ApiConstants.products}/$productId/barcode',
+      data: {'barcode': barcode.trim()},
+    );
+  }
+
+  // Master ilaçtan ürün oluştur + barkod ekle
+  Future<Map<String, dynamic>> createProductFromMasterWithBarcode({
+    required String masterDrugId,
+    required String barcode,
+  }) async {
+    final response = await _apiClient.dio.post(
+      '${ApiConstants.products}/from-master-with-barcode',
+      data: {
+        'master_drug_id': masterDrugId,
+        'barcode': barcode.trim(),
+      },
+    );
+    return Map<String, dynamic>.from(response.data as Map);
+  }
+
   // Ürünün Stok Geçmişini Getir
   Future<List<dynamic>> getProductStocks(String productId) async {
     final response = await _apiClient.dio.get(

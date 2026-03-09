@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:mobile/shared/widgets/barcode_scanner_sheet.dart';
 import 'package:intl/intl.dart';
 import 'package:mobile/core/utils/image_utils.dart';
 import '../../../../../core/constants/api_constants.dart';
@@ -13,7 +14,9 @@ import '../../providers/purchase_form_provider.dart';
 import 'purchase_table_row.dart';
 
 class PurchaseItemsZone extends ConsumerStatefulWidget {
-  const PurchaseItemsZone({super.key});
+  final void Function(String barcode)? onBarcodeScanned;
+
+  const PurchaseItemsZone({super.key, this.onBarcodeScanned});
 
   @override
   ConsumerState<PurchaseItemsZone> createState() => _PurchaseItemsZoneState();
@@ -273,7 +276,18 @@ class _PurchaseItemsZoneState extends ConsumerState<PurchaseItemsZone> {
                                       strokeWidth: 2,
                                     ),
                                   )
-                                  : null,
+                                  : (widget.onBarcodeScanned != null
+                                      ? IconButton(
+                                          icon: const Icon(Icons.qr_code_scanner, color: AppColors.primary),
+                                          tooltip: "Kamera ile barkod tara",
+                                          onPressed: () {
+                                            BarcodeScannerSheet.show(
+                                              context,
+                                              onScanned: widget.onBarcodeScanned!,
+                                            );
+                                          },
+                                        )
+                                      : null),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),

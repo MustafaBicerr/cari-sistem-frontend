@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/services/barcode_handler.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../shared/widgets/barcode_listener_wrapper.dart';
+import '../../../../shared/widgets/barcode_scanner_sheet.dart';
 import '../../../products/domain/models/product.dart';
 import '../../../products/presentation/providers/product_controller.dart';
 import '../../../products/presentation/widgets/product_card.dart';
@@ -18,10 +21,42 @@ class QuickSaleScreen extends ConsumerStatefulWidget {
 
 class _QuickSaleScreenState extends ConsumerState<QuickSaleScreen> {
   final TextEditingController _searchCtrl = TextEditingController();
-  String _selectedPaymentMethod = 'CASH';
+
+  bool _isSellable(Product product) => !(product.buyingPrice <= 0 && product.sellingPrice <= 0);
+
+  void _handleBarcodeScanned(String barcode) {
+    final handler = ref.read(barcodeHandlerProvider);
+    handler.handleBarcode(
+      context,
+      barcode,
+      onFound: (result) {
+        // Master'da barkod varsa backend her zaman tenant product döndürür - direkt sepete ekle
+        Product? product = ref.read(productControllerProvider).findProductById(result.id);
+        if (product == null) {
+          try {
+            product = Product.fromJson(result.data);
+          } catch (_) {}
+        }
+        if (product != null) {
+          _onProductTap(product);
+        }
+      },
+    );
+  }
 
   // --- SEPET İŞLEMLERİ ---
   void _onProductTap(Product product) {
+    if (!_isSellable(product)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            "Bu ürün satışa uygun değil. Önce Fatura Girişi veya Açılış Stoğu ekranında fiyat/stok tanımlayın.",
+          ),
+        ),
+      );
+      return;
+    }
+
     // Miktar seçme dialogunu aç
     showDialog(
       context: context,
@@ -51,19 +86,6 @@ class _QuickSaleScreenState extends ConsumerState<QuickSaleScreen> {
     );
   }
 
-  void _completeSale() {
-    final cartItems = ref.read(cartProvider);
-    if (cartItems.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Sepet boş!")));
-      return;
-    }
-    // TODO: Backend bağlantısı burada yapılacak
-    debugPrint("Satış Tamamlandı: ${cartItems.length} kalem ürün.");
-    ref.read(cartProvider.notifier).clearCart();
-  }
-
   @override
   Widget build(BuildContext context) {
     // Ürün listesini Products ekranındaki gibi filtered provider'dan alıyoruz
@@ -71,10 +93,13 @@ class _QuickSaleScreenState extends ConsumerState<QuickSaleScreen> {
     final cartItems = ref.watch(cartProvider);
     final cartNotifier = ref.read(cartProvider.notifier);
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(title: const Text("Hızlı Satış & POS"), elevation: 0),
-      body: LayoutBuilder(
+    return BarcodeListenerWrapper(
+      onBarcodeScanned: _handleBarcodeScanned,
+      onClearFocusedField: () => _searchCtrl.clear(),
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: AppBar(title: const Text("Hızlı Satış & POS"), elevation: 0),
+        body: LayoutBuilder(
         builder: (context, constraints) {
           // Responsive Kırılma Noktası
           final isDesktop = constraints.maxWidth > 900;
@@ -102,9 +127,10 @@ class _QuickSaleScreenState extends ConsumerState<QuickSaleScreen> {
                             color: AppColors.textSecondary,
                           ),
                           suffixIcon: IconButton(
-                            icon: const Icon(Icons.qr_code_scanner),
+                            icon: const Icon(Icons.qr_code_scanner, color: AppColors.primary),
+                            tooltip: "Kamera ile barkod tara",
                             onPressed: () {
-                              /* Kamera tarama logic */
+                              BarcodeScannerSheet.show(context, onScanned: _handleBarcodeScanned);
                             },
                           ),
                           filled: true,
@@ -128,9 +154,10 @@ class _QuickSaleScreenState extends ConsumerState<QuickSaleScreen> {
                               ),
                           error: (err, _) => Center(child: Text("Hata: $err")),
                           data: (products) {
-                            if (products.isEmpty)
+                            final sellableProducts = products.where(_isSellable).toList();
+                            if (sellableProducts.isEmpty)
                               return const Center(
-                                child: Text("Ürün bulunamadı."),
+                                child: Text("Satışa uygun ürün bulunamadı."),
                               );
 
                             // Grid sütun sayısını dinamik ayarla
@@ -142,7 +169,7 @@ class _QuickSaleScreenState extends ConsumerState<QuickSaleScreen> {
                             return GridView.builder(
                               cacheExtent: 1000,
                               physics: const BouncingScrollPhysics(),
-                              itemCount: products.length,
+                              itemCount: sellableProducts.length,
                               gridDelegate:
                                   SliverGridDelegateWithFixedCrossAxisCount(
                                     crossAxisCount: crossAxisCount,
@@ -152,9 +179,9 @@ class _QuickSaleScreenState extends ConsumerState<QuickSaleScreen> {
                                   ),
                               itemBuilder: (ctx, i) {
                                 return ProductCard(
-                                  product: products[i],
+                                  product: sellableProducts[i],
                                   isPosMode: true, // 🔥 POS Modu Aktif
-                                  onAddToCart: () => _onProductTap(products[i]),
+                                  onAddToCart: () => _onProductTap(sellableProducts[i]),
                                 );
                               },
                             );
@@ -235,6 +262,7 @@ class _QuickSaleScreenState extends ConsumerState<QuickSaleScreen> {
           );
         },
       ),
+    ),
     );
   }
 }

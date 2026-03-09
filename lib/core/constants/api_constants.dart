@@ -33,6 +33,9 @@ class ApiConstants {
   // Product Endpoints
   static const String products = '/products';
 
+  // Barcode Endpoints
+  static const String barcodeLookup = '/barcode/lookup';
+
   // Customer Endpoints
   static const String customers = '/customers';
 

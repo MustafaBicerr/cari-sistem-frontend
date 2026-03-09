@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/services/barcode_handler.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../shared/widgets/barcode_listener_wrapper.dart';
+import '../../../../shared/widgets/barcode_scanner_sheet.dart';
 import '../../domain/models/product.dart';
 import '../providers/product_controller.dart';
 import '../widgets/product_card.dart';
 import '../widgets/product_form_dialog.dart';
+import '../widgets/non_tenant_product_info_dialog.dart';
 
 class ProductListScreen extends ConsumerStatefulWidget {
   const ProductListScreen({super.key});
@@ -15,74 +18,43 @@ class ProductListScreen extends ConsumerStatefulWidget {
 }
 
 class _ProductListScreenState extends ConsumerState<ProductListScreen> {
-  final FocusNode _focusNode = FocusNode();
-  final StringBuffer _barcodeBuffer = StringBuffer();
-  DateTime? _lastEventTime;
+  final _searchCtrl = TextEditingController();
 
   @override
   void dispose() {
-    _focusNode.dispose();
+    _searchCtrl.dispose();
     super.dispose();
   }
 
-  void _handleKeyEvent(KeyEvent event) {
-    // DEBUG: Gelen tuş olayını konsola bas
-    // debugPrint("Key Event: ${event.runtimeType} | Key: ${event.logicalKey.keyLabel} | Char: ${event.character}");
-
-    if (event is KeyDownEvent) {
-      final now = DateTime.now();
-      final isEnter = event.logicalKey == LogicalKeyboardKey.enter;
-
-      // Hız Algoritması:
-      // 1. Enter tuşu hariç (Enter gecikmeli gelse de buffer'ı işlemeli)
-      // 2. Tuşlar arası 250ms'den fazlaysa (Toleransı artırdık) manuel giriş kabul et
-      if (!isEnter &&
-          _lastEventTime != null &&
-          now.difference(_lastEventTime!).inMilliseconds > 250) {
-        debugPrint("--- Zaman aşımı (Süre > 250ms), Buffer temizleniyor ---");
-        _barcodeBuffer.clear();
-      }
-      _lastEventTime = now;
-
-      if (isEnter) {
-        debugPrint("ENTER tuşu algılandı. Buffer içeriği: $_barcodeBuffer");
-        if (_barcodeBuffer.isNotEmpty) {
-          _handleScannedBarcode(_barcodeBuffer.toString());
-          _barcodeBuffer.clear();
+  void _handleBarcodeScanned(String barcode) {
+    final handler = ref.read(barcodeHandlerProvider);
+    handler.handleBarcode(
+      context,
+      barcode,
+      autoCreateTenantProduct: false,
+      onFound: (result) {
+        if (!result.isTenantProduct) {
+          showDialog(
+            context: context,
+            builder: (_) => NonTenantProductInfoDialog(data: result.data),
+          );
+          return;
         }
-      } else if (event.character != null && event.character!.isNotEmpty) {
-        // Sadece yazdırılabilir karakterleri ekle
-        _barcodeBuffer.write(event.character);
-        // debugPrint("Buffer'a eklendi: ${event.character} | Güncel Buffer: $_barcodeBuffer");
-      }
-    }
-  }
 
-  void _handleScannedBarcode(String barcode) {
-    // Focus'u search bar'dan veya başka yerden alıp ana node'a verelim ki klavye açılmasın
-    _focusNode.requestFocus();
-
-    final controller = ref.read(productControllerProvider);
-    final product = controller.findProductByBarcode(barcode);
-
-    if (product != null) {
-      // DURUM A: Ürün bulundu -> Düzenleme ekranını aç
-      showDialog(
-        context: context,
-        builder: (context) => ProductFormDialog(product: product),
-      );
-    } else {
-      // DURUM B: Ürün yok -> Ekleme ekranını aç
-      // NOT: ProductFormDialog'a initialBarcode parametresi eklememiz gerekebilir,
-      // şimdilik senin yapını bozmamak için bu parametreyi gönderiyorum.
-      // Eğer hata verirse ProductFormDialog içine 'final String? initialBarcode;' ekleyeceğiz.
-      showDialog(
-        context: context,
-        // builder: (context) => ProductFormDialog(initialBarcode: barcode),
-        // Düzeltme: Şimdilik hata vermemesi için parametresiz açıyorum, dialogu güncelleyince burayı açarsın.
-        builder: (context) => const ProductFormDialog(),
-      );
-    }
+        Product? product = ref.read(productControllerProvider).findProductById(result.id);
+        if (product == null) {
+          try {
+            product = Product.fromJson(result.data);
+          } catch (_) {}
+        }
+        if (product != null) {
+          showDialog(
+            context: context,
+            builder: (_) => ProductFormDialog(product: product),
+          );
+        }
+      },
+    );
   }
 
   @override
@@ -95,10 +67,9 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
       'AsyncValue state: ${productsAsync.runtimeType}',
     );
 
-    return KeyboardListener(
-      focusNode: _focusNode,
-      autofocus: true, // Sayfa açılınca dinlemeye başla
-      onKeyEvent: _handleKeyEvent,
+    return BarcodeListenerWrapper(
+      onBarcodeScanned: _handleBarcodeScanned,
+      onClearFocusedField: () => _searchCtrl.clear(),
       child: Scaffold(
         // Sayfa başlığı ve Ekle butonu
         floatingActionButton: FloatingActionButton.extended(
@@ -128,25 +99,34 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
               ),
               const SizedBox(height: 24),
 
-              // --- DÜZELTİLEN KISIM BAŞLANGIÇ ---
-              // Buradaki TextField silinmişti, geri eklendi.
-              TextField(
-                onChanged: (value) {
-                  ref.read(productControllerProvider).searchProducts(value);
-                },
-                decoration: InputDecoration(
-                  hintText: "Ürün adı veya barkod numarası arayın...",
-                  prefixIcon: const Icon(
-                    Icons.search,
-                    color: AppColors.textSecondary,
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _searchCtrl,
+                      onChanged: (value) {
+                        ref.read(productControllerProvider).searchProducts(value);
+                      },
+                      decoration: InputDecoration(
+                        hintText: "Ürün adı veya barkod numarası arayın...",
+                        prefixIcon: const Icon(Icons.search, color: AppColors.textSecondary),
+                        suffixIcon: IconButton(
+                          icon: const Icon(Icons.qr_code_scanner, color: AppColors.primary),
+                          tooltip: "Kamera ile barkod tara",
+                          onPressed: () {
+                            BarcodeScannerSheet.show(context, onScanned: _handleBarcodeScanned);
+                          },
+                        ),
+                        filled: true,
+                        fillColor: Colors.white,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                    ),
                   ),
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
+                ],
               ),
 
               // --- DÜZELTİLEN KISIM BİTİŞ ---
