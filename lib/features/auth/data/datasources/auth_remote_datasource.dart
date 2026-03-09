@@ -1,4 +1,4 @@
-﻿import '../../../../core/api/api_client.dart';
+import '../../../../core/api/api_client.dart';
 import '../../../../core/constants/api_constants.dart';
 import '../models/user_model.dart';
 import '../models/auth_tokens_model.dart';
@@ -49,15 +49,15 @@ class AuthRemoteDatasource {
       final response = await _apiClient.dio.post(
         ApiConstants.register,
         data: {
-          'clinic_name': clinicName,
+          'company_name': clinicName,
           'full_name': fullName,
           'phone': phone,
-          'email': email,
+          if (email.trim().isNotEmpty) 'email': email,
           'password': password,
         },
       );
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 201 || response.statusCode == 200) {
         final data = response.data;
         final user = UserModel.fromJson(data['user']);
         final tokens = AuthTokensModel.fromJson(data);
@@ -66,7 +66,11 @@ class AuthRemoteDatasource {
         throw Exception('Registration failed');
       }
     } on DioException catch (e) {
-      throw Exception(e.response?.data['error'] ?? 'Network error');
+      throw Exception(
+        e.response?.data['message'] ??
+            e.response?.data['error'] ??
+            'Network error',
+      );
     }
   }
 
