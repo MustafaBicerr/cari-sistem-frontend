@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../providers/dashboard_provider.dart';
 import '../../../data/models/supplier_debt_model.dart';
+import 'purchase_invoice_detail_dialog.dart';
 
 class SupplierDebtDialog extends ConsumerWidget {
   const SupplierDebtDialog({super.key});
@@ -54,6 +55,12 @@ class SupplierDebtDialog extends ConsumerWidget {
                       final item = items[index];
 
                       return ListTile(
+                        onTap: () {
+                          showDialog(
+                            context: context,
+                            builder: (context) => PurchaseInvoiceDetailDialog(invoiceId: item.id),
+                          );
+                        },
                         title: Text(
                           item.supplierName,
                           style: const TextStyle(fontWeight: FontWeight.bold),
@@ -65,6 +72,7 @@ class SupplierDebtDialog extends ConsumerWidget {
 
                         trailing: Column(
                           crossAxisAlignment: CrossAxisAlignment.end,
+                          mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(
                               currency.format(item.remainingAmount),

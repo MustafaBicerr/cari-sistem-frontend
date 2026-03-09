@@ -94,8 +94,8 @@ class _ProductFormDialogState extends ConsumerState<ProductFormDialog>
     _barcodeCtrl.text = p.barcode ?? '';
     _buyPriceCtrl.text = p.buyingPrice.toString();
     _sellPriceCtrl.text = p.sellingPrice.toString();
-    _stockCtrl.text = p.stockQuantity.toString();
-    _criticalStockCtrl.text = p.criticalStockLevel.toString();
+    _stockCtrl.text = p.stockQuantity.round().toString();
+    _criticalStockCtrl.text = p.criticalStockLevel.round().toString();
     _vatRateCtrl.text = p.vatRate.toString();
     _selectedUnit = p.unitType;
     _networkImageUrl = p.fullImageUrl;

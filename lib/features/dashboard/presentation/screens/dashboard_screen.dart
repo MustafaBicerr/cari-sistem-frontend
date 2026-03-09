@@ -178,10 +178,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             error: (e, s) => const SizedBox(),
             data: (chartData) {
               double totalSales = 0;
-              double totalCashFlow = 0;
+              double salesOnlyCashFlow = 0; // Sadece satıştan gelen peşin (tahsilat hariç)
               for (var h in chartData.hourlyStats) {
                 totalSales += h.totalSalesVolume;
-                totalCashFlow += (h.salesCashFlow + h.collectionCashFlow);
+                salesOnlyCashFlow += h.salesCashFlow;
               }
               double totalCash = 0;
               double totalCard = 0;
@@ -193,6 +193,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   'Payment Method: ${p.paymentMethod}, Amount: ${p.totalAmount}',
                 );
               }
+
+              // Satış Performansı pastası: sadece o günkü satışın dağılımı (peşin vs borç).
+              // Tahsilat (geçmiş borç ödemesi) dahil edilmez; aksi halde oranlar ve borç tutarı bozulur.
+              double debtGiven = totalSales - salesOnlyCashFlow;
+              if (debtGiven < 0) debtGiven = 0;
+              double cashAtSale = totalSales - debtGiven;
 
               return Column(
                 children: [
@@ -210,10 +216,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       },
                     ),
                     pieChart: SummaryPieChart(
-                      value1: totalSales - totalCashFlow,
+                      value1: debtGiven,
                       title1: "Borç Verilen",
                       color1: Colors.blue,
-                      value2: totalCashFlow,
+                      value2: cashAtSale,
                       title2: "Ciro (Peşin)",
                       color2: Colors.green,
                     ),

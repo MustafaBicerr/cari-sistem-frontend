@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:mobile/features/dashboard/data/models/dashboard_chart_model.dart';
 import 'package:mobile/features/dashboard/data/models/supplier_debt_model.dart';
+import 'package:mobile/features/dashboard/data/models/purchase_invoice_detail_model.dart';
 import 'package:mobile/features/dashboard/data/models/transaction_master_model.dart';
 import 'package:mobile/features/dashboard/data/models/turnover_detail_model.dart';
 import '../../../../core/api/api_client.dart';
@@ -156,6 +157,19 @@ class DashboardRepository {
       }
     } on DioException catch (e) {
       throw Exception(e.response?.data['error'] ?? 'Bağlantı hatası');
+    }
+  }
+
+  Future<PurchaseInvoiceDetailModel?> getPurchaseInvoiceDetail(String invoiceId) async {
+    try {
+      final response = await _apiClient.dio.get('/dashboard/purchase-invoice/$invoiceId');
+      if (response.statusCode == 200 && response.data['data'] != null) {
+        return PurchaseInvoiceDetailModel.fromJson(response.data['data'] as Map<String, dynamic>);
+      }
+      return null;
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) return null;
+      throw Exception(e.response?.data['message'] ?? 'Fatura detayı alınamadı.');
     }
   }
 }
