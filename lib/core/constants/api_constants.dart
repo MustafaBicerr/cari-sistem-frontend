@@ -27,6 +27,9 @@ class ApiConstants {
   static const String resetPassword = '/auth/reset-password';
   static const String changePassword = '/auth/change-password';
 
+  // User management endpoints (admin)
+  static const String users = '/users';
+
   // Dashboard Endpoints
   static const String dashboardSummary = '/dashboard/summary';
 
@@ -48,8 +51,10 @@ class ApiConstants {
   // Finance / Cash register
   static const String financeExpenses = '/finance/expenses';
   static const String financeCollections = '/finance/collections';
-  static const String financeCustomerDebtSummary = '/finance/customers'; // /:customerId/debt-summary
-  static const String financeTransactionDetail = '/finance/transactions'; // /:transactionId
+  static const String financeCustomerDebtSummary =
+      '/finance/customers'; // /:customerId/debt-summary
+  static const String financeTransactionDetail =
+      '/finance/transactions'; // /:transactionId
 
   // Endpoints
   static const String dashboardTurnoverDetails = '/dashboard/turnover-details';

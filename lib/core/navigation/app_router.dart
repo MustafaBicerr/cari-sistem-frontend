@@ -27,10 +27,9 @@ import '../../features/stock/presentation/screens/stock_entry_screen.dart';
 
 // Accounts Screens
 import '../../features/accounts/presentation/screens/customer_list_screen.dart';
-import '../../features/accounts/presentation/screens/supplier_list_screen.dart';
 
 // Settings Screen
-import '../../features/settings/presentation/screens/settings_screen.dart';
+import '../../settings/presentation/screens/settings_screen.dart';
 import '../../features/auth/presentation/providers/auth_state_provider.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
