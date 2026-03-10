@@ -1,18 +1,42 @@
-import 'dart:io';
-import 'package:flutter/foundation.dart'; // 👈 Bu paketi ekle (kIsWeb için)
-
 class ApiConstants {
   static String get baseUrl {
-    // 1. Önce Web kontrolü yapıyoruz (Çünkü Web'de Platform.isAndroid hata verir)
-    if (kIsWeb) {
-      return 'http://localhost:3000/api';
+    // Tek kaynaklı yönetim için:
+    // - Development: LOCAL_API_BASE (localhost / emulator)
+    // - Production: PROD_API_BASE (sunucu IP / domain)
+    //
+    // Bu dosya git'e commit edilir; gerçek değerler .env ve
+    // --dart-define ile yönetilir.
+    const String devBase = String.fromEnvironment(
+      'MOBILE_API_BASE_DEV',
+      defaultValue: 'http://localhost:3000/api',
+    );
+    const String androidBase = String.fromEnvironment(
+      'MOBILE_API_BASE_ANDROID',
+      defaultValue: 'http://10.0.2.2:3000/api',
+    );
+    const String prodBase = String.fromEnvironment(
+      'MOBILE_API_BASE_PROD',
+      defaultValue: 'https://api.vetapp.com.tr/api',
+    );
+
+    // Basit strateji:
+    // - Debug build'lerde dev/android değerleri
+    // - Release build'lerde prod değeri
+    // (Detaylı ortam yönetimi için ayrı flavor'lar eklenebilir.)
+    assert(() {
+      // Debug modda: Android emulator için özel hostname kullan
+      // (Gerekirse platform kontrolü ileride eklenebilir)
+      return true;
+    }());
+
+    const bool isRelease = bool.fromEnvironment('dart.vm.product');
+    if (isRelease) {
+      return prodBase;
     }
-    // 2. Web değilse Mobil/Desktop kontrolü yapabiliriz
-    else if (Platform.isAndroid) {
-      return 'http://10.0.2.2:3000/api';
-    } else {
-      return 'http://localhost:3000/api'; // iOS veya Desktop
-    }
+    // Debug / profile:
+    // Android emulator kullanılıyorsa derleme tarafında
+    // MOBILE_API_BASE_ANDROID ile override edilebilir.
+    return androidBase.isNotEmpty ? androidBase : devBase;
   }
 
   static String get baseUrlImage {
