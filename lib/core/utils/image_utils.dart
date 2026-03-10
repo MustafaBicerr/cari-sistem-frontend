@@ -12,7 +12,7 @@ class ImageUtils {
         return path;
       }
 
-      final baseUrl = ApiConstants.baseUrl.replaceAll('/api', '');
+      final baseUrl = ApiConstants.baseUrlImage;
       final normalizedPath = path.startsWith('/') ? path : '/$path';
 
       return '$baseUrl$normalizedPath';

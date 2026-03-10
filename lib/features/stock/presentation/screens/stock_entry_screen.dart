@@ -109,7 +109,10 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
             final vatRate = (product['vat_rate'] ?? 20) is int
                 ? (product['vat_rate'] ?? 20).toDouble()
                 : 20.0;
-            final imgUrl = product['full_image_url'] ?? product['image_path'];
+            final imgUrl = ImageUtils.getImageUrl(
+              product['image_path']?.toString(),
+              product['full_image_url']?.toString(),
+            );
             _addProductToPurchase(
               id,
               name,
@@ -117,7 +120,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
               sellingPrice,
               vatRate,
               'local',
-              imgUrl?.toString(),
+              imgUrl,
             );
           },
         );

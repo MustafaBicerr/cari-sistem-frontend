@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../features/products/presentation/providers/product_controller.dart';
 import '../services/barcode_service.dart';
 import '../services/barcode_repository.dart';
+import '../utils/image_utils.dart';
 import '../../shared/widgets/barcode_not_found_dialog.dart';
 
 /// Barkod sonucu - API'den gelen ham veri
@@ -18,7 +19,10 @@ class BarcodeProductResult {
   double get buyingPrice => _toDouble(data['buying_price'] ?? data['buy_price']);
   double get sellingPrice => _toDouble(data['selling_price'] ?? data['sell_price']);
   int get vatRate => _toInt(data['vat_rate'] ?? data['tax_rate'], fallback: 20);
-  String? get imageUrl => data['full_image_url'] ?? data['image_path'];
+  String? get imageUrl => ImageUtils.getImageUrl(
+    data['image_path']?.toString(),
+    data['full_image_url']?.toString(),
+  );
 
   double _toDouble(dynamic value) {
     if (value == null) return 0;

@@ -2,9 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile/shared/widgets/barcode_scanner_sheet.dart';
-import 'package:intl/intl.dart';
 import 'package:mobile/core/utils/image_utils.dart';
-import '../../../../../core/constants/api_constants.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../products/domain/models/product.dart';
 import '../../../../products/presentation/providers/product_controller.dart';
@@ -25,20 +23,6 @@ class PurchaseItemsZone extends ConsumerStatefulWidget {
 class _PurchaseItemsZoneState extends ConsumerState<PurchaseItemsZone> {
   TextEditingController? _searchController;
   bool _isSearching = false;
-
-  // // ----------------------------------------------------------
-  // // IMAGE URL BUILDER
-  // // ----------------------------------------------------------
-  // String? _getImageUrl(String? path, String? fullUrl) {
-  //   if (fullUrl != null && fullUrl.isNotEmpty) return fullUrl;
-  //   if (path != null && path.isNotEmpty) {
-  //     if (path.startsWith('http')) return path;
-  //     final baseUrl = ApiConstants.baseUrl.replaceAll('/api', '');
-  //     final normalizedPath = path.startsWith('/') ? path : '/$path';
-  //     return '$baseUrl$normalizedPath';
-  //   }
-  //   return null;
-  // }
 
   // ----------------------------------------------------------
   // COMBINED SEARCH (LOCAL + GLOBAL)

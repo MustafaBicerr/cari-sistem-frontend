@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
-import '../../../../core/constants/api_constants.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/image_utils.dart';
 import '../../../../core/utils/text_utils.dart';
 import '../../../../core/widgets/dialogs/confirmation_dialog.dart';
 import '../../../../core/widgets/dialogs/discard_changes_dialog.dart';
@@ -207,13 +207,6 @@ class _ProductFormDialogState extends ConsumerState<ProductFormDialog>
         _selectedImage = image;
       });
     }
-  }
-
-  String _getImageUrl(String path) {
-    if (path.startsWith('http')) return path;
-    final baseUrl = ApiConstants.baseUrl.replaceAll('/api', '');
-    final normalizedPath = path.startsWith('/') ? path : '/$path';
-    return '$baseUrl$normalizedPath';
   }
 
   // --- BUTON AKSİYONLARI ---
@@ -911,10 +904,10 @@ class _ProductFormDialogState extends ConsumerState<ProductFormDialog>
             _nameCtrl.text = selection['name'];
             _normalizedName = selection['normalized_name'];
             _selectedRelativePath = selection['image_path'];
-            _networkImageUrl =
-                selection['image_path'] != null
-                    ? _getImageUrl(selection['image_path'])
-                    : selection['full_image_url'];
+            _networkImageUrl = ImageUtils.getImageUrl(
+              selection['image_path']?.toString(),
+              selection['full_image_url']?.toString(),
+            );
             setState(() {});
 
             final data = await ref
@@ -995,12 +988,10 @@ class _ProductFormDialogState extends ConsumerState<ProductFormDialog>
                         (ctx, index) => const Divider(height: 1, indent: 60),
                     itemBuilder: (BuildContext context, int index) {
                       final option = options.elementAt(index);
-                      String? imgUrl;
-                      if (option['image_path'] != null) {
-                        imgUrl = _getImageUrl(option['image_path']);
-                      } else {
-                        imgUrl = option['full_image_url'];
-                      }
+                      final imgUrl = ImageUtils.getImageUrl(
+                        option['image_path']?.toString(),
+                        option['full_image_url']?.toString(),
+                      );
 
                       return ListTile(
                         contentPadding: const EdgeInsets.symmetric(

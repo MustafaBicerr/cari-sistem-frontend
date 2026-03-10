@@ -83,11 +83,14 @@ class _OpeningStockScreenState extends ConsumerState<OpeningStockScreen> {
             final vatRate = (product['vat_rate'] ?? 20) is int
                 ? (product['vat_rate'] ?? 20)
                 : 20;
-            final imgUrl = product['full_image_url'] ?? product['image_path'];
+            final imgUrl = ImageUtils.getImageUrl(
+              product['image_path']?.toString(),
+              product['full_image_url']?.toString(),
+            );
             final newItem = OpeningStockItemEntity(
               productId: id,
               productName: name,
-              imageUrl: imgUrl?.toString(),
+              imageUrl: imgUrl,
               productSource: 'local',
               quantity: 1.0,
               expirationDate: DateTime.now(),

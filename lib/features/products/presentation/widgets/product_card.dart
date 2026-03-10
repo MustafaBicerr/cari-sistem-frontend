@@ -2,8 +2,8 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
-import '../../../../core/constants/api_constants.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/image_utils.dart';
 import '../../domain/models/product.dart';
 import 'product_form_dialog.dart';
 
@@ -19,15 +19,6 @@ class ProductCard extends StatelessWidget {
     this.onAddToCart,
   });
 
-  String _getImageUrl(String path) {
-    if (path.startsWith('http')) return path;
-    final baseUrl = ApiConstants.baseUrl
-        .replaceAll('/api', '')
-        .replaceAll(RegExp(r'/$'), '');
-    final normalizedPath = path.startsWith('/') ? path : '/$path';
-    return '$baseUrl$normalizedPath';
-  }
-
   @override
   Widget build(BuildContext context) {
     debugPrint(
@@ -35,6 +26,11 @@ class ProductCard extends StatelessWidget {
       'Product: ${product.name}\n'
       'ID: ${product.id}\n'
       'Price: ${product.sellingPrice}',
+    );
+
+    final imageUrl = ImageUtils.getImageUrl(
+      product.customImagePath,
+      product.fullImageUrl,
     );
 
     return RepaintBoundary(
@@ -86,9 +82,9 @@ class ProductCard extends StatelessWidget {
                       top: Radius.circular(16),
                     ),
                     child:
-                        product.fullImageUrl != null
+                        imageUrl != null
                             ? CachedNetworkImage(
-                              imageUrl: _getImageUrl(product.fullImageUrl!),
+                              imageUrl: imageUrl,
                               fit: BoxFit.cover,
                               memCacheHeight: 300,
                               memCacheWidth: 300,
