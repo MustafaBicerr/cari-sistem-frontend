@@ -79,8 +79,13 @@ class SupplierModel {
 class SupplierDetailResponse {
   final SupplierModel profile;
   final List<SupplierHistoryItem> history;
+  final SupplierStats? stats;
 
-  SupplierDetailResponse({required this.profile, required this.history});
+  SupplierDetailResponse({
+    required this.profile,
+    required this.history,
+    this.stats,
+  });
 
   factory SupplierDetailResponse.fromJson(Map<String, dynamic> json) {
     return SupplierDetailResponse(
@@ -91,6 +96,12 @@ class SupplierDetailResponse {
               ?.map((e) => SupplierHistoryItem.fromJson(e))
               .toList() ??
           [],
+      stats:
+          json['stats'] != null
+              ? SupplierStats.fromJson(
+                  Map<String, dynamic>.from(json['stats'] as Map),
+                )
+              : null,
     );
   }
 }
@@ -126,6 +137,29 @@ class SupplierHistoryItem {
       dueDate: json['due_date'] ?? '',
       type: json['type'] ?? '',
       description: json['description'] ?? '',
+    );
+  }
+}
+
+class SupplierStats {
+  final int totalInvoices;
+  final double totalPurchaseVolume;
+  final double totalItems;
+  final int productCount;
+
+  SupplierStats({
+    required this.totalInvoices,
+    required this.totalPurchaseVolume,
+    required this.totalItems,
+    required this.productCount,
+  });
+
+  factory SupplierStats.fromJson(Map<String, dynamic> json) {
+    return SupplierStats(
+      totalInvoices: int.tryParse('${json['total_invoices'] ?? 0}') ?? 0,
+      totalPurchaseVolume: _safeDouble(json['total_purchase_volume']),
+      totalItems: _safeDouble(json['total_items']),
+      productCount: int.tryParse('${json['product_count'] ?? 0}') ?? 0,
     );
   }
 }

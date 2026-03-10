@@ -1,7 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import '../../data/models/transaction_master_model.dart';
-import 'dashboard_provider.dart';
 
 // --- FİLTRE DURUMU (GELİŞMİŞ) ---
 class TransactionFilterState {
@@ -121,13 +120,13 @@ final transactionFilterProvider =
     });
 
 // --- 🔥 FİLTRELEME MOTORU ---
-final filteredTransactionsProvider = Provider.autoDispose<
-  List<TransactionMasterModel>
->((ref) {
-  final allTransactionsAsync = ref.watch(transactionMasterProvider(null));
-  final filterState = ref.watch(transactionFilterProvider);
+// allTransactionsAsync: backend'den gelen ham liste (master veya müşteri bazlı)
+final filteredTransactionsProvider = Provider.autoDispose
+    .family<List<TransactionMasterModel>, AsyncValue<List<TransactionMasterModel>>>(
+  (ref, allTransactionsAsync) {
+    final filterState = ref.watch(transactionFilterProvider);
 
-  return allTransactionsAsync.when(
+    return allTransactionsAsync.when(
     loading: () => [],
     error: (_, __) => [],
     data: (allTransactions) {

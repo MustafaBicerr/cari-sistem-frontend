@@ -59,4 +59,33 @@ class FinanceRepository {
       rethrow;
     }
   }
+
+  // 3. Tedarikçiye Ödeme Yap (Fatura Bazlı - Seçili Satın Alma Faturalarını Tamamen Kapat)
+  Future<void> paySupplierInvoices({
+    required String supplierId,
+    required List<String> invoiceIds,
+    String paymentMethod = 'CASH',
+    String? description,
+    DateTime? date,
+  }) async {
+    try {
+      await _apiClient.dio.post(
+        '/finance/supplier-invoice-payments',
+        data: {
+          'supplier_id': supplierId,
+          'invoice_ids': invoiceIds,
+          'payment_method': paymentMethod,
+          if (description != null) 'description': description,
+          if (date != null) 'transaction_date': date.toIso8601String(),
+        },
+      );
+
+      if (kDebugMode) {
+        debugPrint('🟢 [FinanceRepo] Fatura Bazlı Ödeme Başarılı');
+      }
+    } catch (e) {
+      debugPrint('🔴 [FinanceRepo] Invoice Payment Error: $e');
+      rethrow;
+    }
+  }
 }

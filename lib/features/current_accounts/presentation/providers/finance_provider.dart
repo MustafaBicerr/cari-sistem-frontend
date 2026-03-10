@@ -52,6 +52,7 @@ class FinanceNotifier extends StateNotifier<FinanceState> {
       _ref.invalidate(customerDetailProvider(customerId));
     } catch (e) {
       state = FinanceState(isLoading: false, error: e.toString());
+      rethrow;
     }
   }
 
@@ -80,6 +81,36 @@ class FinanceNotifier extends StateNotifier<FinanceState> {
       _ref.invalidate(supplierDetailProvider(supplierId));
     } catch (e) {
       state = FinanceState(isLoading: false, error: e.toString());
+      rethrow;
+    }
+  }
+
+  // 3. Tedarikçiye Ödeme (Fatura Bazlı - Seçili Faturaları Kapat)
+  Future<void> paySupplierInvoices({
+    required String supplierId,
+    required List<String> invoiceIds,
+    String paymentMethod = 'CASH',
+    String? description,
+    DateTime? date,
+  }) async {
+    state = FinanceState(isLoading: true);
+    try {
+      await _repository.paySupplierInvoices(
+        supplierId: supplierId,
+        invoiceIds: invoiceIds,
+        paymentMethod: paymentMethod,
+        description: description,
+        date: date,
+      );
+
+      state = FinanceState(isSuccess: true, isLoading: false);
+
+      // Liste ve detayları tazele
+      _ref.invalidate(supplierListProvider);
+      _ref.invalidate(supplierDetailProvider(supplierId));
+    } catch (e) {
+      state = FinanceState(isLoading: false, error: e.toString());
+      rethrow;
     }
   }
 }

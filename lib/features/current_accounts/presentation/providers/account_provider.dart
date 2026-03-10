@@ -1,9 +1,9 @@
-import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:mobile/core/api/api_client.dart';
 import 'package:mobile/features/current_accounts/data/models/repositories/customer_repository.dart';
 import 'package:mobile/features/current_accounts/data/models/repositories/supplier_repository.dart';
+import 'package:mobile/features/current_accounts/data/models/repositories/accounts_overview_repository.dart';
 import '../../data/models/customer_model.dart';
 import '../../data/models/supplier_model.dart';
 import '../../data/models/warehouse_model.dart';
@@ -15,6 +15,10 @@ final customerRepositoryProvider = Provider(
 
 final supplierRepositoryProvider = Provider(
   (ref) => SupplierRepository(ref.read(apiClientProvider)),
+);
+
+final accountsOverviewRepositoryProvider = Provider(
+  (ref) => AccountsOverviewRepository(ref.read(apiClientProvider)),
 );
 
 // --- LIST PROVIDERS ---
@@ -33,6 +37,18 @@ final supplierListProvider = FutureProvider.autoDispose<List<SupplierModel>>((
 ) async {
   final repo = ref.read(supplierRepositoryProvider);
   return repo.getAllSuppliers();
+});
+
+final customerOverviewProvider =
+    FutureProvider.autoDispose<CustomerOverviewModel>((ref) async {
+  final repo = ref.read(accountsOverviewRepositoryProvider);
+  return repo.getCustomerOverview();
+});
+
+final supplierOverviewProvider =
+    FutureProvider.autoDispose<SupplierOverviewModel>((ref) async {
+  final repo = ref.read(accountsOverviewRepositoryProvider);
+  return repo.getSupplierOverview();
 });
 
 // --- AUTOCOMPLETE LOGIC (Debouncing) ---

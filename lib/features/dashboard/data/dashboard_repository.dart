@@ -130,6 +130,31 @@ class DashboardRepository {
     }
   }
 
+  // 5. Müşteri Bazlı Tüm İşlemler (İşlem Gezgini - Müşteri Modu)
+  Future<List<TransactionMasterModel>> getCustomerTransactions(
+    String customerId,
+  ) async {
+    try {
+      final response = await _apiClient.dio
+          .get('/dashboard/customer-transactions/$customerId');
+
+      if (response.statusCode == 200) {
+        final data = response.data;
+        if (data is Map<String, dynamic> && data['data'] is List) {
+          final List list = data['data'] as List;
+          return list.map((e) => TransactionMasterModel.fromJson(e)).toList();
+        }
+        if (data is List) {
+          return data.map((e) => TransactionMasterModel.fromJson(e)).toList();
+        }
+      }
+      throw Exception('Müşteri işlemleri alınamadı');
+    } on DioException catch (e) {
+      debugPrint("🔴 [REPO] Customer tx error: ${e.message}");
+      throw Exception(e.response?.data['error'] ?? 'Bağlantı hatası');
+    }
+  }
+
   Future<SupplierDebtSummaryModel> getSupplierSummary() async {
     try {
       final response = await _apiClient.dio.get('/dashboard/suppliers');

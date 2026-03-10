@@ -44,6 +44,13 @@ final transactionMasterProvider = FutureProvider.autoDispose
       return repo.getTransactionMasterDetails(date);
     });
 
+// 5. Müşteri Bazlı İşlem Listesi (İşlem Gezgini - Müşteri Modu)
+final customerTransactionsProvider = FutureProvider.autoDispose
+    .family<List<TransactionMasterModel>, String>((ref, customerId) async {
+  final repo = ref.read(dashboardRepositoryProvider);
+  return repo.getCustomerTransactions(customerId);
+});
+
 final supplierSummaryProvider =
     FutureProvider.autoDispose<SupplierDebtSummaryModel>((ref) async {
       final repo = ref.read(dashboardRepositoryProvider);

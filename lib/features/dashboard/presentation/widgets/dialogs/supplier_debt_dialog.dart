@@ -42,54 +42,110 @@ class SupplierDebtDialog extends ConsumerWidget {
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (e, s) => Center(child: Text("Hata: $e")),
                 data: (items) {
-                  if (items.isEmpty) {
+                if (items.isEmpty) {
                     return const Center(
                       child: Text("Açık tedarikçi borcu yok."),
                     );
                   }
 
-                  return ListView.separated(
-                    itemCount: items.length,
-                    separatorBuilder: (_, __) => const Divider(),
-                    itemBuilder: (context, index) {
-                      final item = items[index];
+                // 🔄 Aynı tedarikçiye ait birden fazla faturayı grupla
+                final Map<String, _SupplierDebtGroup> grouped = {};
 
-                      return ListTile(
-                        onTap: () {
-                          showDialog(
-                            context: context,
-                            builder: (context) => PurchaseInvoiceDetailDialog(invoiceId: item.id),
-                          );
-                        },
-                        title: Text(
-                          item.supplierName,
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
+                for (final item in items) {
+                  final key = item.supplierId.isNotEmpty
+                      ? item.supplierId
+                      : item.supplierName; // Fallback olarak isim
 
-                        subtitle: Text(
-                          "Fatura: ${item.invoiceNo} • Vade: ${item.dueDate != null ? DateFormat('dd.MM.yyyy').format(item.dueDate!) : '-'}",
-                        ),
-
-                        trailing: Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              currency.format(item.remainingAmount),
-                              style: const TextStyle(
-                                color: Colors.red,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            Text(
-                              "Toplam: ${currency.format(item.totalAmount)}",
-                              style: const TextStyle(fontSize: 11),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
+                  final group = grouped.putIfAbsent(
+                    key,
+                    () => _SupplierDebtGroup(
+                      supplierId: item.supplierId,
+                      supplierName: item.supplierName,
+                      invoices: [],
+                      totalRemaining: 0,
+                    ),
                   );
+
+                  group.invoices.add(item);
+                  group.totalRemaining += item.remainingAmount;
+                }
+
+                final groups = grouped.values.toList()
+                  ..sort(
+                    (a, b) => b.totalRemaining.compareTo(a.totalRemaining),
+                  );
+
+                return ListView.separated(
+                  itemCount: groups.length,
+                  separatorBuilder: (_, __) => const Divider(),
+                  itemBuilder: (context, index) {
+                    final group = groups[index];
+
+                    return ExpansionTile(
+                      title: Text(
+                        group.supplierName,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      subtitle: Text(
+                        "Borçlu fatura sayısı: ${group.invoices.length}",
+                      ),
+                      trailing: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            currency.format(group.totalRemaining),
+                            style: const TextStyle(
+                              color: Colors.red,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      children: group.invoices.map((invoice) {
+                        return ListTile(
+                          onTap: () {
+                            showDialog(
+                              context: context,
+                              builder: (context) =>
+                                  PurchaseInvoiceDetailDialog(
+                                invoiceId: invoice.id,
+                              ),
+                            );
+                          },
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 4,
+                          ),
+                          title: Text(
+                            "Fatura: ${invoice.invoiceNo}",
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                          subtitle: Text(
+                            "Vade: ${invoice.dueDate != null ? DateFormat('dd.MM.yyyy').format(invoice.dueDate!) : '-'}",
+                          ),
+                          trailing: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                currency.format(invoice.remainingAmount),
+                                style: const TextStyle(
+                                  color: Colors.redAccent,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                "Toplam: ${currency.format(invoice.totalAmount)}",
+                                style: const TextStyle(fontSize: 11),
+                              ),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                    );
+                  },
+                );
                 },
               ),
             ),
@@ -98,4 +154,18 @@ class SupplierDebtDialog extends ConsumerWidget {
       ),
     );
   }
+}
+
+class _SupplierDebtGroup {
+  _SupplierDebtGroup({
+    required this.supplierId,
+    required this.supplierName,
+    required this.invoices,
+    required this.totalRemaining,
+  });
+
+  final String supplierId;
+  final String supplierName;
+  final List<SupplierDebtMasterModel> invoices;
+  double totalRemaining;
 }

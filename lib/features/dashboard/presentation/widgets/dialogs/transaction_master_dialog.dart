@@ -12,14 +12,19 @@ enum TransactionViewType {
   none, // Standart (Filtresiz)
   dailyTurnover, // Günlük Ciro (Sadece Ödenenler + Bugün)
   totalDebt, // Toplam Alacak (Sadece Borçlular + Azalan Sıralama)
+  customer, // Belirli bir müşterinin tüm işlemleri
 }
 
 class TransactionMasterDialog extends ConsumerStatefulWidget {
   final TransactionViewType viewType; // Hangi modda açılacak?
+  final String? customerId;
+  final String? customerName;
 
   const TransactionMasterDialog({
     super.key,
     this.viewType = TransactionViewType.none, // Varsayılan boş
+    this.customerId,
+    this.customerName,
   });
 
   @override
@@ -67,8 +72,8 @@ class _TransactionMasterDialogState
         ); // Tutar gösterimi borç odaklı olsun
         break;
 
+      case TransactionViewType.customer:
       case TransactionViewType.none:
-      default:
         // Hiçbir şey yapma, tertemiz liste.
         break;
     }
@@ -86,8 +91,15 @@ class _TransactionMasterDialogState
       dateParam = null; // Tüm zamanlar
     }
 
-    final masterAsync = ref.watch(transactionMasterProvider(dateParam));
-    final filteredTransactions = ref.watch(filteredTransactionsProvider);
+    // Veri kaynağı: dashboard geneli mi, yoksa belirli bir müşteri mi?
+    final masterAsync =
+        widget.viewType == TransactionViewType.customer &&
+                widget.customerId != null
+            ? ref.watch(customerTransactionsProvider(widget.customerId!))
+            : ref.watch(transactionMasterProvider(dateParam));
+
+    final filteredTransactions =
+        ref.watch(filteredTransactionsProvider(masterAsync));
 
     final size = MediaQuery.of(context).size;
     final isMobile = size.width < 600;
@@ -174,9 +186,12 @@ class _TransactionMasterDialogState
       children: [
         // Mobilde Başlık Gizlenebilir veya Küçültülebilir
         if (!isMobile) ...[
-          const Text(
-            "İşlem Gezgini",
-            style: TextStyle(
+          Text(
+            widget.viewType == TransactionViewType.customer &&
+                    widget.customerName != null
+                ? "İşlem Gezgini - ${widget.customerName}"
+                : "İşlem Gezgini",
+            style: const TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.bold,
               color: AppColors.textPrimary,

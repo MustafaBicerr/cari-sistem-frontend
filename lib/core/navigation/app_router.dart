@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:mobile/features/current_accounts/presentation/screens/current_accounts_screen.dart';
 import 'package:mobile/features/current_accounts/presentation/screens/customer_detail_screen.dart';
 import 'package:mobile/features/current_accounts/presentation/screens/supplier_detail_screen.dart';
 import 'package:mobile/features/dashboard/presentation/screens/dashboard_screen.dart';
@@ -25,8 +24,9 @@ import '../../features/sales/presentation/screens/cash_register_screen.dart';
 // Stock Screens
 import '../../features/stock/presentation/screens/stock_entry_screen.dart';
 
-// Accounts Screens
-import '../../features/accounts/presentation/screens/customer_list_screen.dart';
+// Current Accounts Screens
+import 'package:mobile/features/current_accounts/presentation/screens/customer_list_screen.dart';
+import 'package:mobile/features/current_accounts/presentation/screens/supplier_list_screen.dart';
 
 // Settings Screen
 import '../../settings/presentation/screens/settings_screen.dart';
@@ -194,7 +194,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               ),
               GoRoute(
                 path: 'suppliers',
-                builder: (context, state) => const CurrentAccountsScreen(),
+                builder: (context, state) => const SupplierListScreen(),
               ),
             ],
           ),

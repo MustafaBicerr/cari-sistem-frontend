@@ -28,6 +28,7 @@ class SupplierDebtSummaryModel {
 
 class SupplierDebtMasterModel {
   final String id;
+  final String supplierId;
   final String supplierName;
   final String invoiceNo;
   final DateTime invoiceDate;
@@ -42,6 +43,7 @@ class SupplierDebtMasterModel {
 
   SupplierDebtMasterModel({
     required this.id,
+    required this.supplierId,
     required this.supplierName,
     required this.invoiceNo,
     required this.invoiceDate,
@@ -56,6 +58,7 @@ class SupplierDebtMasterModel {
   factory SupplierDebtMasterModel.fromJson(Map<String, dynamic> json) {
     return SupplierDebtMasterModel(
       id: json['id']?.toString() ?? '',
+      supplierId: json['supplier_id']?.toString() ?? '',
       supplierName: json['supplier_name'] ?? '',
       invoiceNo: json['invoice_no'] ?? '',
       invoiceDate: DateTime.parse(json['invoice_date']),
