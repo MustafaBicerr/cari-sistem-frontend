@@ -20,6 +20,8 @@ import '../../features/clinic/presentation/screens/appointment_screen.dart';
 // Sales Screens
 import '../../features/sales/presentation/screens/quick_sale_screen.dart';
 import '../../features/sales/presentation/screens/cash_register_screen.dart';
+import '../../features/sales/presentation/screens/quick_sale_mobile_screen.dart';
+import '../../features/sales/presentation/screens/sales_home_mobile_screen.dart';
 
 // Stock Screens
 import '../../features/stock/presentation/screens/stock_entry_screen.dart';
@@ -29,6 +31,7 @@ import '../../features/stock/presentation/screens/stock_entry_mobile_screen.dart
 // Current Accounts Screens
 import 'package:mobile/features/current_accounts/presentation/screens/customer_list_screen.dart';
 import 'package:mobile/features/current_accounts/presentation/screens/supplier_list_screen.dart';
+import 'package:mobile/features/current_accounts/presentation/screens/accounts_home_mobile_screen.dart';
 
 // Settings Screen
 import '../../settings/presentation/screens/settings_screen.dart';
@@ -139,20 +142,29 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             ],
           ),
 
-          // 3. SATIŞ (Sales) - 🔥 DÜZELTİLDİ
+          // 3. SATIŞ (Sales)
           GoRoute(
             path: '/sales',
-            // Eğer /sales'e tıklanırsa varsayılan olarak POS ekranına git.
-            redirect: (context, state) {
-              if (state.uri.toString() == '/sales') {
-                return '/sales/pos';
+            // Satış ana sayfası:
+            // - Mobil: sekmeli satış ana ekranı (Hızlı Satış / Kasa)
+            // - Desktop/Web: mevcut Hızlı Satış ekranı
+            builder: (context, state) {
+              final width = MediaQuery.of(context).size.width;
+              if (width < 700) {
+                return const SalesHomeMobileScreen();
               }
-              return null;
+              return const QuickSaleScreen();
             },
             routes: [
               GoRoute(
                 path: 'pos',
-                builder: (context, state) => const QuickSaleScreen(),
+                builder: (context, state) {
+                  final width = MediaQuery.of(context).size.width;
+                  if (width < 700) {
+                    return const QuickSaleMobileScreen();
+                  }
+                  return const QuickSaleScreen();
+                },
               ),
               GoRoute(
                 path: 'cash',
@@ -193,15 +205,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             ],
           ),
 
-          // 5. CARİ (Accounts) - 🔥 DÜZELTİLDİ
+          // 5. CARİ (Accounts)
           GoRoute(
             path: '/accounts',
-            // Eğer /accounts'a tıklanırsa varsayılan olarak Müşterilere git.
-            redirect: (context, state) {
-              if (state.uri.toString() == '/accounts') {
-                return '/accounts/customers';
+            // Cari ana sayfası:
+            // - Mobil: sekmeli cari ana ekranı (Müşteriler / Tedarikçiler)
+            // - Desktop/Web: mevcut müşteri listesi ekranı
+            builder: (context, state) {
+              final width = MediaQuery.of(context).size.width;
+              if (width < 700) {
+                return const AccountsHomeMobileScreen();
               }
-              return null;
+              return const CustomerListScreen();
             },
             routes: [
               GoRoute(

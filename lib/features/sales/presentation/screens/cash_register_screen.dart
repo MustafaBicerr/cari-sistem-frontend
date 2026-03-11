@@ -15,6 +15,8 @@ class CashRegisterScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(cashRegisterProvider);
     final notifier = ref.read(cashRegisterProvider.notifier);
+    final width = MediaQuery.of(context).size.width;
+    final isMobile = width < 700;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -43,33 +45,36 @@ class CashRegisterScreen extends ConsumerWidget {
 
             const SizedBox(height: 32),
 
-            // 3. AKSİYON & FİLTRE BAR
+            // 3. AKSİYON BUTONLARI
             Row(
               children: [
                 // Masraf Ekle Butonu
-                ElevatedButton.icon(
-                  onPressed: () {
-                    showDialog(
-                      context: context,
-                      builder: (_) => const AddExpenseDialog(),
-                    );
-                  },
-                  icon: const Icon(Icons.remove_circle, color: Colors.white),
-                  label: const Text(
-                    "MASRAF GİR",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
+                Expanded(
+                  flex: isMobile ? 1 : 0,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (_) => const AddExpenseDialog(),
+                      );
+                    },
+                    icon: const Icon(Icons.remove_circle, color: Colors.white),
+                    label: const Text(
+                      "MASRAF GİR",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.error,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 16,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.error,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 16,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                   ),
                 ),
@@ -77,55 +82,84 @@ class CashRegisterScreen extends ConsumerWidget {
                 const SizedBox(width: 16),
 
                 // Tahsilat Butonu
-                ElevatedButton.icon(
-                  onPressed: () {
-                    showDialog(
-                      context: context,
-                      builder: (_) => const CollectionDialog(),
-                    );
-                  },
-                  icon: const Icon(Icons.add_circle, color: Colors.white),
-                  label: const Text(
-                    "TAHSİLAT YAP",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
+                Expanded(
+                  flex: isMobile ? 1 : 0,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (_) => const CollectionDialog(),
+                      );
+                    },
+                    icon: const Icon(Icons.add_circle, color: Colors.white),
+                    label: const Text(
+                      "TAHSİLAT YAP",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.success,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 16,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.success,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 16,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                   ),
                 ),
 
-                const Spacer(),
+                if (!isMobile) const Spacer(),
 
-                // Filtre Segmentleri
-                _buildFilterChip("Tümü", 'ALL', state.filterType, notifier),
-                const SizedBox(width: 8),
-                _buildFilterChip(
-                  "Gelirler",
-                  'INCOME',
-                  state.filterType,
-                  notifier,
-                ),
-                const SizedBox(width: 8),
-                _buildFilterChip(
-                  "Giderler",
-                  'EXPENSE',
-                  state.filterType,
-                  notifier,
-                ),
+                if (!isMobile) ...[
+                  // Desktop/Web: Filtreler aynı satırda kalsın
+                  _buildFilterChip("Tümü", 'ALL', state.filterType, notifier),
+                  const SizedBox(width: 8),
+                  _buildFilterChip(
+                    "Gelirler",
+                    'INCOME',
+                    state.filterType,
+                    notifier,
+                  ),
+                  const SizedBox(width: 8),
+                  _buildFilterChip(
+                    "Giderler",
+                    'EXPENSE',
+                    state.filterType,
+                    notifier,
+                  ),
+                ],
               ],
             ),
 
             const SizedBox(height: 16),
+
+            // Mobilde Filtre Segmentleri: Arama çubuğunun hemen üstünde
+            if (isMobile) ...[
+              Row(
+                children: [
+                  _buildFilterChip("Tümü", 'ALL', state.filterType, notifier),
+                  const SizedBox(width: 8),
+                  _buildFilterChip(
+                    "Gelirler",
+                    'INCOME',
+                    state.filterType,
+                    notifier,
+                  ),
+                  const SizedBox(width: 8),
+                  _buildFilterChip(
+                    "Giderler",
+                    'EXPENSE',
+                    state.filterType,
+                    notifier,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+            ],
 
             // 4. MÜŞTERİ ARAMA (Liste filtresi)
             Container(

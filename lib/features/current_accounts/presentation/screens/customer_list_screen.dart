@@ -48,146 +48,211 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
           style: TextStyle(color: Colors.white),
         ),
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: overviewAsync.when(
-              loading: () => const SizedBox(
-                height: 90,
-                child: Center(child: CircularProgressIndicator()),
-              ),
-              error: (e, _) => SizedBox(
-                height: 90,
-                child: Center(
-                  child: Text(
-                    "Özet yüklenemedi",
-                    style: TextStyle(color: Colors.red.shade400),
-                  ),
-                ),
-              ),
-              data: (overview) {
-                return LayoutBuilder(
-                  builder: (context, constraints) {
-                    final isWide = constraints.maxWidth > 900;
-                    final children = [
-                      Expanded(
-                        child: _PrimaryAmountCard(
-                          title: "Toplam Alacak",
-                          amount: overview.totalReceivable,
-                          icon: Icons.account_balance_wallet_outlined,
-                          accentColor: AppColors.error,
-                          subtitle: "Kliniğin tahsil etmesi gereken toplam tutar",
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: overviewAsync.when(
+                loading:
+                    () => const SizedBox(
+                      height: 90,
+                      child: Center(child: CircularProgressIndicator()),
+                    ),
+                error:
+                    (e, _) => SizedBox(
+                      height: 90,
+                      child: Center(
+                        child: Text(
+                          "Özet yüklenemedi",
+                          style: TextStyle(color: Colors.red.shade400),
                         ),
                       ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: customersAsync.when(
-                          loading: () => const _SkeletonCard(),
-                          error: (_, __) => _DebtorCustomersCard(
-                            totalCustomers: 0,
-                            debtorCount: 0,
-                            onTap: null,
+                    ),
+                data: (overview) {
+                  return LayoutBuilder(
+                    builder: (context, constraints) {
+                      final isWide = constraints.maxWidth > 900;
+                      if (isWide) {
+                        return Row(
+                          children: [
+                            Expanded(
+                              child: _PrimaryAmountCard(
+                                title: "Toplam Alacak",
+                                amount: overview.totalReceivable,
+                                icon: Icons.account_balance_wallet_outlined,
+                                accentColor: AppColors.error,
+                                subtitle:
+                                    "Kliniğin tahsil etmesi gereken toplam tutar",
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: customersAsync.when(
+                                loading: () => const _SkeletonCard(),
+                                error:
+                                    (_, __) => _DebtorCustomersCard(
+                                      totalCustomers: 0,
+                                      debtorCount: 0,
+                                      onTap: null,
+                                    ),
+                                data: (customers) {
+                                  final total = overview.totalCustomers;
+                                  final debtors =
+                                      customers
+                                          .where((c) => c.currentBalance > 0)
+                                          .toList();
+                                  return _DebtorCustomersCard(
+                                    totalCustomers: total,
+                                    debtorCount: debtors.length,
+                                    onTap:
+                                        debtors.isEmpty
+                                            ? null
+                                            : () {
+                                              showDialog(
+                                                context: context,
+                                                builder:
+                                                    (_) =>
+                                                        _DebtorCustomersDialog(
+                                                          customers: debtors,
+                                                        ),
+                                              );
+                                            },
+                                  );
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: _TodayCollectionCard(
+                                total: overview.todayTotalCollection,
+                                cash: overview.todayCash,
+                                card: overview.todayCard,
+                                currency: currency,
+                              ),
+                            ),
+                          ],
+                        );
+                      }
+
+                      return Column(
+                        children: [
+                          _PrimaryAmountCard(
+                            title: "Toplam Alacak",
+                            amount: overview.totalReceivable,
+                            icon: Icons.account_balance_wallet_outlined,
+                            accentColor: AppColors.error,
+                            subtitle:
+                                "Kliniğin tahsil etmesi gereken toplam tutar",
                           ),
-                          data: (customers) {
-                            final total = overview.totalCustomers;
-                            final debtors = customers
-                                .where((c) => c.currentBalance > 0)
-                                .toList();
-                            return _DebtorCustomersCard(
-                              totalCustomers: total,
-                              debtorCount: debtors.length,
-                              onTap: debtors.isEmpty
-                                  ? null
-                                  : () {
-                                      showDialog(
-                                        context: context,
-                                        builder: (_) => _DebtorCustomersDialog(
-                                          customers: debtors,
-                                        ),
-                                      );
-                                    },
-                            );
-                          },
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: _TodayCollectionCard(
-                          total: overview.todayTotalCollection,
-                          cash: overview.todayCash,
-                          card: overview.todayCard,
-                          currency: currency,
-                        ),
-                      ),
-                    ];
-
-                    if (isWide) {
-                      return Row(children: children);
-                    }
-
-                    return Column(
-                      children: [
-                        children[0],
-                        const SizedBox(height: 12),
-                        children[2],
-                        const SizedBox(height: 12),
-                        children[1],
-                      ],
-                    );
-                  },
-                );
-              },
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: TextField(
-              onChanged: (val) => setState(() => _searchQuery = val),
-              decoration: InputDecoration(
-                hintText: "Müşteri adı, telefon veya vergi no ara...",
-                prefixIcon: const Icon(
-                  Icons.search,
-                  color: AppColors.textSecondary,
-                ),
-                filled: true,
-                fillColor: Colors.white,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-                contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                          const SizedBox(height: 12),
+                          _TodayCollectionCard(
+                            total: overview.todayTotalCollection,
+                            cash: overview.todayCash,
+                            card: overview.todayCard,
+                            currency: currency,
+                          ),
+                          const SizedBox(height: 12),
+                          customersAsync.when(
+                            loading: () => const _SkeletonCard(),
+                            error:
+                                (_, __) => _DebtorCustomersCard(
+                                  totalCustomers: 0,
+                                  debtorCount: 0,
+                                  onTap: null,
+                                ),
+                            data: (customers) {
+                              final total = overview.totalCustomers;
+                              final debtors =
+                                  customers
+                                      .where((c) => c.currentBalance > 0)
+                                      .toList();
+                              return _DebtorCustomersCard(
+                                totalCustomers: total,
+                                debtorCount: debtors.length,
+                                onTap:
+                                    debtors.isEmpty
+                                        ? null
+                                        : () {
+                                          showDialog(
+                                            context: context,
+                                            builder:
+                                                (_) => _DebtorCustomersDialog(
+                                                  customers: debtors,
+                                                ),
+                                          );
+                                        },
+                              );
+                            },
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                },
               ),
             ),
-          ),
-          const SizedBox(height: 16),
-          Expanded(
-            child: customersAsync.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Center(child: Text("Hata: $e")),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: TextField(
+                onChanged: (val) => setState(() => _searchQuery = val),
+                decoration: InputDecoration(
+                  hintText: "Müşteri adı, telefon veya vergi no ara...",
+                  prefixIcon: const Icon(
+                    Icons.search,
+                    color: AppColors.textSecondary,
+                  ),
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            customersAsync.when(
+              loading:
+                  () => const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 24),
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
+              error:
+                  (e, _) => Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 24),
+                    child: Center(child: Text("Hata: $e")),
+                  ),
               data: (customers) {
-                final filtered = customers
-                    .where(
-                      (c) =>
-                          c.fullName
-                              .toLowerCase()
-                              .contains(_searchQuery.toLowerCase()) ||
-                          (c.phone ?? '')
-                              .toLowerCase()
-                              .contains(_searchQuery.toLowerCase()),
-                    )
-                    .toList();
+                final filtered =
+                    customers
+                        .where(
+                          (c) =>
+                              c.fullName.toLowerCase().contains(
+                                _searchQuery.toLowerCase(),
+                              ) ||
+                              (c.phone ?? '').toLowerCase().contains(
+                                _searchQuery.toLowerCase(),
+                              ),
+                        )
+                        .toList();
 
                 if (filtered.isEmpty) {
-                  return const Center(
-                    child: Text(
-                      "Hiç müşteri bulunamadı.",
-                      style: TextStyle(color: Colors.grey),
+                  return const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 24),
+                    child: Center(
+                      child: Text(
+                        "Hiç müşteri bulunamadı.",
+                        style: TextStyle(color: Colors.grey),
+                      ),
                     ),
                   );
                 }
 
                 return ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
                   itemCount: filtered.length,
                   itemBuilder: (context, index) {
                     final c = filtered[index];
@@ -200,11 +265,12 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
                         showDialog(
                           context: context,
                           barrierDismissible: true,
-                          builder: (_) => TransactionMasterDialog(
-                            viewType: TransactionViewType.customer,
-                            customerId: c.id,
-                            customerName: c.fullName,
-                          ),
+                          builder:
+                              (_) => TransactionMasterDialog(
+                                viewType: TransactionViewType.customer,
+                                customerId: c.id,
+                                customerName: c.fullName,
+                              ),
                         );
                       },
                     );
@@ -212,8 +278,9 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
                 );
               },
             ),
-          ),
-        ],
+            const SizedBox(height: 16),
+          ],
+        ),
       ),
     );
   }
@@ -326,9 +393,7 @@ class _DebtorCustomersCard extends StatelessWidget {
             offset: const Offset(0, 8),
           ),
         ],
-        border: Border.all(
-          color: AppColors.primary.withOpacity(0.25),
-        ),
+        border: Border.all(color: AppColors.primary.withOpacity(0.25)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -384,11 +449,8 @@ class _DebtorCustomersCard extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 11,
                   color:
-                      hasAction
-                          ? AppColors.primary
-                          : AppColors.textSecondary,
-                  fontWeight:
-                      hasAction ? FontWeight.w600 : FontWeight.normal,
+                      hasAction ? AppColors.primary : AppColors.textSecondary,
+                  fontWeight: hasAction ? FontWeight.w600 : FontWeight.normal,
                 ),
               ),
               if (hasAction)
@@ -454,10 +516,7 @@ class _TodayCollectionCard extends StatelessWidget {
                   color: Colors.green.withOpacity(0.12),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
-                  Icons.payments_rounded,
-                  color: Colors.green,
-                ),
+                child: const Icon(Icons.payments_rounded, color: Colors.green),
               ),
               const SizedBox(width: 12),
               const Text(
@@ -598,11 +657,12 @@ class _DebtorCustomersDialog extends StatelessWidget {
                     onTap: () {
                       showDialog(
                         context: context,
-                        builder: (_) => TransactionMasterDialog(
-                          viewType: TransactionViewType.customer,
-                          customerId: c.id,
-                          customerName: c.fullName,
-                        ),
+                        builder:
+                            (_) => TransactionMasterDialog(
+                              viewType: TransactionViewType.customer,
+                              customerId: c.id,
+                              customerName: c.fullName,
+                            ),
                       );
                     },
                     leading: CircleAvatar(
@@ -656,4 +716,3 @@ class _DebtorCustomersDialog extends StatelessWidget {
     );
   }
 }
-

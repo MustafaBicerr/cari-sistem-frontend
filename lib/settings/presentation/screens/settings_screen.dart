@@ -137,55 +137,123 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     SettingsController controller,
     bool isAdmin,
   ) {
+    final items = SettingsMenuItem.values.toList();
+
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SizedBox(
-          height: 76,
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            children:
-                SettingsMenuItem.values.map((item) {
-                  final disabled = _isAdminOnly(item) && !isAdmin;
-                  final selected = state.selectedMenu == item;
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: ChoiceChip(
-                      label: Text(_menuTitle(item)),
-                      selected: selected,
-                      onSelected:
-                          disabled
-                              ? null
-                              : (_) => _handleMenuSelect(item, controller),
-                    ),
-                  );
-                }).toList(),
+        // Başlık
+        const Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            'Ayarlar',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textPrimary,
+            ),
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 4),
+        const Text(
+          'Hesap, güvenlik ve klinik yönetimi ile ilgili tüm ayarlar.',
+          style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+        ),
+        const SizedBox(height: 16),
+
+        // Instagram tarzı dikey menü listesi
         Expanded(
-          child: _SettingsContent(
-            state: state,
-            isAdmin: isAdmin,
-            currentPasswordController: _currentPasswordController,
-            newPasswordController: _newPasswordController,
-            confirmPasswordController: _confirmPasswordController,
-            branchIdController: _branchIdController,
-            fullNameController: _fullNameController,
-            phoneController: _phoneController,
-            emailController: _emailController,
-            userPasswordController: _userPasswordController,
-            selectedRole: _selectedRole,
-            onRoleChanged: (value) => setState(() => _selectedRole = value),
-            onLogout: () => controller.logout(),
-            onChangePassword: _handlePasswordChange,
-            onCreateUser: _handleCreateUser,
-            onDeactivateUser: (id) => controller.deactivateUser(id),
-            onInflationChanged: controller.setInflationProtection,
-            onBackupChanged: controller.setBackupPeriod,
-            onThemeChanged: controller.setThemePreference,
-            onRefreshUsers: controller.loadUsers,
-            onRefreshSessions: controller.loadSessions,
-            onRevokeSession: controller.revokeSession,
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.03),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: ListView.separated(
+              itemCount: items.length,
+              separatorBuilder: (_, __) => const Divider(height: 1),
+              itemBuilder: (context, index) {
+                final item = items[index];
+                final disabled = _isAdminOnly(item) && !isAdmin;
+                final selected = state.selectedMenu == item;
+
+                return ListTile(
+                  leading: Icon(
+                    _menuIcon(item),
+                    color:
+                        selected ? AppColors.primary : AppColors.textSecondary,
+                  ),
+                  title: Text(
+                    _menuTitle(item),
+                    style: TextStyle(
+                      fontWeight:
+                          selected ? FontWeight.w600 : FontWeight.normal,
+                    ),
+                  ),
+                  subtitle: Text(
+                    _menuSubtitle(item),
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                  trailing: disabled
+                      ? const Icon(
+                          Icons.lock_outline,
+                          size: 18,
+                          color: Colors.grey,
+                        )
+                      : const Icon(Icons.chevron_right),
+                  enabled: !disabled,
+                  selected: selected,
+                  selectedTileColor: AppColors.primary.withOpacity(0.06),
+                  onTap: disabled
+                      ? null
+                      : () {
+                          // Menü state'ini güncelle (desktop ile aynı kaynak)
+                          _handleMenuSelect(item, controller);
+
+                          // Detay ekranına git
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => SettingsDetailScreen(
+                                item: item,
+                                selectedRole: _selectedRole,
+                                currentPasswordController:
+                                    _currentPasswordController,
+                                newPasswordController: _newPasswordController,
+                                confirmPasswordController:
+                                    _confirmPasswordController,
+                                branchIdController: _branchIdController,
+                                fullNameController: _fullNameController,
+                                phoneController: _phoneController,
+                                emailController: _emailController,
+                                userPasswordController:
+                                    _userPasswordController,
+                                onRoleChanged: (value) =>
+                                    setState(() => _selectedRole = value),
+                                onLogout: () => controller.logout(),
+                                onChangePassword: _handlePasswordChange,
+                                onCreateUser: _handleCreateUser,
+                                onDeactivateUser: (id) =>
+                                    controller.deactivateUser(id),
+                                onInflationChanged:
+                                    controller.setInflationProtection,
+                                onBackupChanged: controller.setBackupPeriod,
+                                onThemeChanged: controller.setThemePreference,
+                                onRefreshUsers: controller.loadUsers,
+                                onRefreshSessions: controller.loadSessions,
+                                onRevokeSession: controller.revokeSession,
+                              ),
+                            ),
+                          );
+                        },
+                );
+              },
+            ),
           ),
         ),
       ],
@@ -766,6 +834,121 @@ class _SettingsContent extends StatelessWidget {
       icon: Icons.admin_panel_settings_outlined,
       text:
           'Bu ayar sadece ADMIN rolünde olan kullanıcılara açıktır. Klinik güvenliği için personel yönetimi ekranları kısıtlanmıştır.',
+    );
+  }
+}
+
+class SettingsDetailScreen extends ConsumerStatefulWidget {
+  final SettingsMenuItem item;
+  final TextEditingController currentPasswordController;
+  final TextEditingController newPasswordController;
+  final TextEditingController confirmPasswordController;
+  final TextEditingController branchIdController;
+  final TextEditingController fullNameController;
+  final TextEditingController phoneController;
+  final TextEditingController emailController;
+  final TextEditingController userPasswordController;
+  final String selectedRole;
+  final ValueChanged<String> onRoleChanged;
+  final VoidCallback onLogout;
+  final VoidCallback onChangePassword;
+  final VoidCallback onCreateUser;
+  final ValueChanged<String> onDeactivateUser;
+  final ValueChanged<bool> onInflationChanged;
+  final ValueChanged<BackupPeriodOption> onBackupChanged;
+  final ValueChanged<ThemePreference> onThemeChanged;
+  final VoidCallback onRefreshUsers;
+  final VoidCallback onRefreshSessions;
+  final ValueChanged<String> onRevokeSession;
+
+  const SettingsDetailScreen({
+    super.key,
+    required this.item,
+    required this.currentPasswordController,
+    required this.newPasswordController,
+    required this.confirmPasswordController,
+    required this.branchIdController,
+    required this.fullNameController,
+    required this.phoneController,
+    required this.emailController,
+    required this.userPasswordController,
+    required this.selectedRole,
+    required this.onRoleChanged,
+    required this.onLogout,
+    required this.onChangePassword,
+    required this.onCreateUser,
+    required this.onDeactivateUser,
+    required this.onInflationChanged,
+    required this.onBackupChanged,
+    required this.onThemeChanged,
+    required this.onRefreshUsers,
+    required this.onRefreshSessions,
+    required this.onRevokeSession,
+  });
+
+  @override
+  ConsumerState<SettingsDetailScreen> createState() =>
+      _SettingsDetailScreenState();
+}
+
+class _SettingsDetailScreenState
+    extends ConsumerState<SettingsDetailScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Seçili menüyü ilk frame sonrasında güncelle ki
+    // widget ağacı çizilirken provider state'i değiştirmeyelim.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final controller = ref.read(settingsControllerProvider.notifier);
+      controller.selectMenu(widget.item);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = ref.watch(settingsControllerProvider);
+    final authState = ref.watch(authControllerProvider);
+    final isAdmin = (authState.user?.role.toUpperCase() ?? '') == 'ADMIN';
+
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        leading: const BackButton(),
+        title: Text(_menuTitle(widget.item)),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Expanded(
+              child: _SettingsContent(
+                state: state,
+                isAdmin: isAdmin,
+                currentPasswordController: widget.currentPasswordController,
+                newPasswordController: widget.newPasswordController,
+                confirmPasswordController: widget.confirmPasswordController,
+                branchIdController: widget.branchIdController,
+                fullNameController: widget.fullNameController,
+                phoneController: widget.phoneController,
+                emailController: widget.emailController,
+                userPasswordController: widget.userPasswordController,
+                selectedRole: widget.selectedRole,
+                onRoleChanged: widget.onRoleChanged,
+                onLogout: widget.onLogout,
+                onChangePassword: widget.onChangePassword,
+                onCreateUser: widget.onCreateUser,
+                onDeactivateUser: widget.onDeactivateUser,
+                onInflationChanged: widget.onInflationChanged,
+                onBackupChanged: widget.onBackupChanged,
+                onThemeChanged: widget.onThemeChanged,
+                onRefreshUsers: widget.onRefreshUsers,
+                onRefreshSessions: widget.onRefreshSessions,
+                onRevokeSession: widget.onRevokeSession,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
