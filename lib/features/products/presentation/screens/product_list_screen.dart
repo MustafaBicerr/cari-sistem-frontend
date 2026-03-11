@@ -153,11 +153,15 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                     // Responsive Grid Builder
                     return LayoutBuilder(
                       builder: (context, constraints) {
-                        int crossAxisCount = 2; // Mobil
+                        int crossAxisCount = 2; // Mobil varsayılan
+                        double childAspectRatio = 0.7; // Mobilde biraz daha yüksek kart
+
                         if (constraints.maxWidth > 1100) {
                           crossAxisCount = 5; // Desktop
+                          childAspectRatio = 0.8;
                         } else if (constraints.maxWidth > 700) {
                           crossAxisCount = 3; // Tablet
+                          childAspectRatio = 0.75;
                         }
 
                         return GridView.builder(
@@ -182,7 +186,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                                 crossAxisCount: crossAxisCount,
                                 crossAxisSpacing: 16,
                                 mainAxisSpacing: 16,
-                                childAspectRatio: 0.75,
+                                childAspectRatio: childAspectRatio,
                               ),
                           itemBuilder: (context, index) {
                             return ProductCard(product: products[index]);

@@ -23,6 +23,8 @@ import '../../features/sales/presentation/screens/cash_register_screen.dart';
 
 // Stock Screens
 import '../../features/stock/presentation/screens/stock_entry_screen.dart';
+import '../../features/stock/presentation/screens/stock_home_mobile_screen.dart';
+import '../../features/stock/presentation/screens/stock_entry_mobile_screen.dart';
 
 // Current Accounts Screens
 import 'package:mobile/features/current_accounts/presentation/screens/customer_list_screen.dart';
@@ -162,12 +164,26 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           // 4. STOK (Stock) - 🔥 DÜZELTİLDİ
           GoRoute(
             path: '/stock',
-            // Stok ana sayfasına tıklayınca Menü sayfasını gösteriyoruz.
-            builder: (context, state) => const StockEntryScreen(),
+            // Stok ana sayfası:
+            // - Mobil: sekmeli stok ana ekranı (Stok Durumu / Ürünler / Stok Girişi)
+            // - Desktop/Web: mevcut stok giriş ekranı
+            builder: (context, state) {
+              final width = MediaQuery.of(context).size.width;
+              if (width < 700) {
+                return const StockHomeMobileScreen();
+              }
+              return const StockEntryScreen();
+            },
             routes: [
               GoRoute(
                 path: 'entry',
-                builder: (context, state) => const StockEntryScreen(),
+                builder: (context, state) {
+                  final width = MediaQuery.of(context).size.width;
+                  if (width < 700) {
+                    return const StockEntryMobileScreen();
+                  }
+                  return const StockEntryScreen();
+                },
               ),
               // Çift olan 'products' rotasını temizledim, tek bıraktım:
               GoRoute(

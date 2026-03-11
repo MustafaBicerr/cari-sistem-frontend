@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/responsive/responsive_layout.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -24,17 +24,32 @@ class _LoginMobileView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: const [
-              _LogoAndTitle(),
-              SizedBox(height: 40),
-              _LoginForm(),
-            ],
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            AppColors.scaffoldBackground,
+            Color(0xFFE0F7F3),
+            Colors.white,
+            // Colors.purple,
+            // Colors.orange,
+          ],
+        ),
+      ),
+      child: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: const [
+                _LogoAndTitle(),
+                SizedBox(height: 40),
+                _LoginForm(),
+              ],
+            ),
           ),
         ),
       ),

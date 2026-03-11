@@ -6,6 +6,7 @@ import '../../data/models/supplier_model.dart';
 import '../providers/account_detail_provider.dart';
 import '../providers/finance_provider.dart';
 import 'package:mobile/features/dashboard/presentation/widgets/dialogs/purchase_invoice_detail_dialog.dart';
+import 'package:mobile/features/dashboard/presentation/screens/purchase_invoice_detail_screen.dart';
 
 class SupplierDetailScreen extends ConsumerStatefulWidget {
   final String supplierId;
@@ -413,11 +414,22 @@ class _SupplierDetailScreenState extends ConsumerState<SupplierDetailScreen> {
 
         return InkWell(
           onTap: () {
-            showDialog(
-              context: context,
-              builder: (ctx) =>
-                  PurchaseInvoiceDetailDialog(invoiceId: item.id),
-            );
+            final isMobile = MediaQuery.of(context).size.width < 600;
+            if (isMobile) {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) =>
+                      PurchaseInvoiceDetailScreen(invoiceId: item.id),
+                ),
+              );
+            } else {
+              showDialog(
+                context: context,
+                builder:
+                    (ctx) =>
+                        PurchaseInvoiceDetailDialog(invoiceId: item.id),
+              );
+            }
           },
           child: Container(
             padding:

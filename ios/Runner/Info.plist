@@ -45,5 +45,8 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<!-- Kamera ile barkod okuma için izin açıklaması -->
+	<key>NSCameraUsageDescription</key>
+	<string>Barkod ve QR kodları okutabilmek için kamera erişimine ihtiyacımız var.</string>
 </dict>
 </plist>

@@ -11,6 +11,7 @@ import 'package:mobile/shared/widgets/barcode_listener_wrapper.dart';
 import '../providers/opening_stock_provider.dart';
 import '../widgets/opening_stocks/opening_stock_header.dart';
 import '../widgets/opening_stocks/opening_stock_items_zone.dart';
+import 'opening_stock_mobile_screen.dart';
 import 'package:mobile/shared/widgets/barcode_not_found_dialog.dart';
 
 class OpeningStockScreen extends ConsumerStatefulWidget {
@@ -117,6 +118,13 @@ class _OpeningStockScreenState extends ConsumerState<OpeningStockScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(openingStockProvider);
     final notifier = ref.read(openingStockProvider.notifier);
+
+    final width = MediaQuery.of(context).size.width;
+
+    // Mobil için yeni çok adımlı ekranı kullan.
+    if (width < 700) {
+      return const OpeningStockMobileScreen();
+    }
 
     return BarcodeListenerWrapper(
       onBarcodeScanned: _handleBarcodeScanned,

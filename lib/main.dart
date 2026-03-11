@@ -5,10 +5,12 @@ import 'core/theme/app_colors.dart';
 import 'features/auth/presentation/providers/auth_controller.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter/services.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('tr_TR', null);
+  await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
   runApp(const ProviderScope(child: MyApp()));
 }
 

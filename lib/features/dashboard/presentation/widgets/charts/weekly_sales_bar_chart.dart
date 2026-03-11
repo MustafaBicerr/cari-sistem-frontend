@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:mobile/features/dashboard/data/models/dashboard_chart_model.dart';
 import 'dart:math';
 import '../../../../../core/theme/app_colors.dart';
+import '../../../../../core/responsive/responsive_layout.dart';
 
 class WeeklySalesBarChart extends StatelessWidget {
   final List<WeeklyStat> weeklyStats;
@@ -21,6 +22,8 @@ class WeeklySalesBarChart extends StatelessWidget {
       maxY = max(maxY, stat.collectionCash);
     }
     maxY = maxY == 0 ? 100 : maxY * 1.2;
+
+    final isMobile = ResponsiveLayout.isMobile(context);
 
     return Container(
       padding: const EdgeInsets.all(24),
@@ -70,154 +73,306 @@ class WeeklySalesBarChart extends StatelessWidget {
           const SizedBox(height: 32),
 
           // GRAFİK
-          AspectRatio(
-            aspectRatio: 2.6,
-            child: BarChart(
-              BarChartData(
-                maxY: maxY,
-                gridData: FlGridData(
-                  show: true,
-                  drawVerticalLine: false,
-                  horizontalInterval: maxY / 5,
-                  getDrawingHorizontalLine:
-                      (v) => FlLine(
-                        color: Colors.grey.withOpacity(0.1),
-                        strokeWidth: 1,
-                      ),
-                ),
-                titlesData: FlTitlesData(
-                  show: true,
-                  rightTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  topTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-
-                  // 🔥 X EKSENİ AYARLARI (GÜNCELLENDİ)
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize:
-                          50, // İki satır olduğu için alanı genişlettik (30 -> 50)
-                      getTitlesWidget: (value, meta) {
-                        final index = value.toInt();
-                        if (index >= 0 && index < weeklyStats.length) {
-                          final stat = weeklyStats[index];
-                          final trDayName = _getTurkishDayName(stat.dayName);
-
-                          return Padding(
-                            padding: const EdgeInsets.only(top: 8.0),
-                            child: Text(
-                              "${stat.shortDate}\n$trDayName", // Tarih üstte, Gün altta
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                color: AppColors.textSecondary,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                                height: 1.2, // Satır arası boşluk
-                              ),
+          if (isMobile)
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              reverse: true,
+              child: SizedBox(
+                width: max(360, 80.0 * weeklyStats.length),
+                child: AspectRatio(
+                  aspectRatio: 2.6,
+                  child: BarChart(
+                    BarChartData(
+                      maxY: maxY,
+                      gridData: FlGridData(
+                        show: true,
+                        drawVerticalLine: false,
+                        horizontalInterval: maxY / 5,
+                        getDrawingHorizontalLine:
+                            (v) => FlLine(
+                              color: Colors.grey.withOpacity(0.1),
+                              strokeWidth: 1,
                             ),
-                          );
-                        }
-                        return const Text('');
-                      },
+                      ),
+                      titlesData: FlTitlesData(
+                        show: true,
+                        rightTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
+                        ),
+                        topTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
+                        ),
+
+                        // 🔥 X EKSENİ AYARLARI (GÜNCELLENDİ)
+                        bottomTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            reservedSize: 50,
+                            getTitlesWidget: (value, meta) {
+                              final index = value.toInt();
+                              if (index >= 0 && index < weeklyStats.length) {
+                                final stat = weeklyStats[index];
+                                final trDayName = _getTurkishDayName(
+                                  stat.dayName,
+                                );
+
+                                return Padding(
+                                  padding: const EdgeInsets.only(top: 8.0),
+                                  child: Text(
+                                    "${stat.shortDate}\n$trDayName",
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                      color: AppColors.textSecondary,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      height: 1.2,
+                                    ),
+                                  ),
+                                );
+                              }
+                              return const Text('');
+                            },
+                          ),
+                        ),
+                        leftTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            reservedSize: 40,
+                            getTitlesWidget: (value, meta) {
+                              if (value == 0) return const Text('');
+                              if (value >= 1000) {
+                                return Text(
+                                  '${(value / 1000).toStringAsFixed(1)}k',
+                                  style: const TextStyle(
+                                    fontSize: 10,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                );
+                              }
+                              return Text(
+                                value.toInt().toString(),
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  color: AppColors.textSecondary,
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                      borderData: FlBorderData(show: false),
+                      barTouchData: BarTouchData(
+                        touchTooltipData: BarTouchTooltipData(
+                          getTooltipColor: (_) => Colors.blueGrey.shade900,
+                          getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                            String label = "";
+                            if (rodIndex == 0)
+                              label = "Satış";
+                            else if (rodIndex == 1)
+                              label = "Kasa";
+                            else
+                              label = "Tahsilat";
+
+                            return BarTooltipItem(
+                              "$label\n",
+                              const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                              children: [
+                                TextSpan(
+                                  text:
+                                      "₺${NumberFormat('#,##0').format(rod.toY)}",
+                                  style: TextStyle(
+                                    color: rod.color,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
+                        ),
+                      ),
+                      barGroups:
+                          weeklyStats.asMap().entries.map((e) {
+                            final index = e.key;
+                            final stat = e.value;
+                            return BarChartGroupData(
+                              x: index,
+                              barRods: [
+                                BarChartRodData(
+                                  toY: stat.totalSales,
+                                  color: Colors.blue,
+                                  width: 8,
+                                  borderRadius: BorderRadius.circular(2),
+                                ),
+                                BarChartRodData(
+                                  toY: stat.salesCash,
+                                  color: Colors.green,
+                                  width: 8,
+                                  borderRadius: BorderRadius.circular(2),
+                                ),
+                                BarChartRodData(
+                                  toY: stat.collectionCash,
+                                  color: Colors.orange,
+                                  width: 8,
+                                  borderRadius: BorderRadius.circular(2),
+                                ),
+                              ],
+                              barsSpace: 4,
+                            );
+                          }).toList(),
                     ),
                   ),
-                  leftTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 40,
-                      getTitlesWidget: (value, meta) {
-                        if (value == 0) return const Text('');
-                        if (value >= 1000) {
+                ),
+              ),
+            )
+          else
+            AspectRatio(
+              aspectRatio: 2.6,
+              child: BarChart(
+                BarChartData(
+                  maxY: maxY,
+                  gridData: FlGridData(
+                    show: true,
+                    drawVerticalLine: false,
+                    horizontalInterval: maxY / 5,
+                    getDrawingHorizontalLine:
+                        (v) => FlLine(
+                          color: Colors.grey.withOpacity(0.1),
+                          strokeWidth: 1,
+                        ),
+                  ),
+                  titlesData: FlTitlesData(
+                    show: true,
+                    rightTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    topTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 50,
+                        getTitlesWidget: (value, meta) {
+                          final index = value.toInt();
+                          if (index >= 0 && index < weeklyStats.length) {
+                            final stat = weeklyStats[index];
+                            final trDayName = _getTurkishDayName(stat.dayName);
+
+                            return Padding(
+                              padding: const EdgeInsets.only(top: 8.0),
+                              child: Text(
+                                "${stat.shortDate}\n$trDayName",
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  height: 1.2,
+                                ),
+                              ),
+                            );
+                          }
+                          return const Text('');
+                        },
+                      ),
+                    ),
+                    leftTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 40,
+                        getTitlesWidget: (value, meta) {
+                          if (value == 0) return const Text('');
+                          if (value >= 1000) {
+                            return Text(
+                              '${(value / 1000).toStringAsFixed(1)}k',
+                              style: const TextStyle(
+                                fontSize: 10,
+                                color: AppColors.textSecondary,
+                              ),
+                            );
+                          }
                           return Text(
-                            '${(value / 1000).toStringAsFixed(1)}k',
+                            value.toInt().toString(),
                             style: const TextStyle(
                               fontSize: 10,
                               color: AppColors.textSecondary,
                             ),
                           );
-                        }
-                        return Text(
-                          value.toInt().toString(),
-                          style: const TextStyle(
-                            fontSize: 10,
-                            color: AppColors.textSecondary,
+                        },
+                      ),
+                    ),
+                  ),
+                  borderData: FlBorderData(show: false),
+                  barTouchData: BarTouchData(
+                    touchTooltipData: BarTouchTooltipData(
+                      getTooltipColor: (_) => Colors.blueGrey.shade900,
+                      getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                        String label = "";
+                        if (rodIndex == 0)
+                          label = "Satış";
+                        else if (rodIndex == 1)
+                          label = "Kasa";
+                        else
+                          label = "Tahsilat";
+
+                        return BarTooltipItem(
+                          "$label\n",
+                          const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
                           ),
+                          children: [
+                            TextSpan(
+                              text: "₺${NumberFormat('#,##0').format(rod.toY)}",
+                              style: TextStyle(
+                                color: rod.color,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
                         );
                       },
                     ),
                   ),
-                ),
-                borderData: FlBorderData(show: false),
-
-                barTouchData: BarTouchData(
-                  touchTooltipData: BarTouchTooltipData(
-                    getTooltipColor: (_) => Colors.blueGrey.shade900,
-                    getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                      String label = "";
-                      if (rodIndex == 0)
-                        label = "Satış";
-                      else if (rodIndex == 1)
-                        label = "Kasa";
-                      else
-                        label = "Tahsilat";
-
-                      return BarTooltipItem(
-                        "$label\n",
-                        const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                        ),
-                        children: [
-                          TextSpan(
-                            text: "₺${NumberFormat('#,##0').format(rod.toY)}",
-                            style: TextStyle(
-                              color: rod.color,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w500,
+                  barGroups:
+                      weeklyStats.asMap().entries.map((e) {
+                        final index = e.key;
+                        final stat = e.value;
+                        return BarChartGroupData(
+                          x: index,
+                          barRods: [
+                            BarChartRodData(
+                              toY: stat.totalSales,
+                              color: Colors.blue,
+                              width: 8,
+                              borderRadius: BorderRadius.circular(2),
                             ),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
+                            BarChartRodData(
+                              toY: stat.salesCash,
+                              color: Colors.green,
+                              width: 8,
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                            BarChartRodData(
+                              toY: stat.collectionCash,
+                              color: Colors.orange,
+                              width: 8,
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ],
+                          barsSpace: 4,
+                        );
+                      }).toList(),
                 ),
-
-                barGroups:
-                    weeklyStats.asMap().entries.map((e) {
-                      final index = e.key;
-                      final stat = e.value;
-                      return BarChartGroupData(
-                        x: index,
-                        barRods: [
-                          BarChartRodData(
-                            toY: stat.totalSales,
-                            color: Colors.blue,
-                            width: 8,
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                          BarChartRodData(
-                            toY: stat.salesCash,
-                            color: Colors.green,
-                            width: 8,
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                          BarChartRodData(
-                            toY: stat.collectionCash,
-                            color: Colors.orange,
-                            width: 8,
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                        ],
-                        barsSpace: 4,
-                      );
-                    }).toList(),
               ),
             ),
-          ),
         ],
       ),
     );

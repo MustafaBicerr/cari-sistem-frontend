@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../providers/dashboard_provider.dart';
 import '../../../data/models/supplier_debt_model.dart';
+import '../../screens/purchase_invoice_detail_screen.dart';
 import 'purchase_invoice_detail_dialog.dart';
 
 class SupplierDebtDialog extends ConsumerWidget {
@@ -105,13 +106,25 @@ class SupplierDebtDialog extends ConsumerWidget {
                       children: group.invoices.map((invoice) {
                         return ListTile(
                           onTap: () {
-                            showDialog(
-                              context: context,
-                              builder: (context) =>
-                                  PurchaseInvoiceDetailDialog(
-                                invoiceId: invoice.id,
-                              ),
-                            );
+                            final isMobile =
+                                MediaQuery.of(context).size.width < 600;
+                            if (isMobile) {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => PurchaseInvoiceDetailScreen(
+                                    invoiceId: invoice.id,
+                                  ),
+                                ),
+                              );
+                            } else {
+                              showDialog(
+                                context: context,
+                                builder:
+                                    (context) => PurchaseInvoiceDetailDialog(
+                                      invoiceId: invoice.id,
+                                    ),
+                              );
+                            }
                           },
                           contentPadding: const EdgeInsets.symmetric(
                             horizontal: 16,

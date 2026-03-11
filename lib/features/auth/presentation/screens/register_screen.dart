@@ -1,8 +1,7 @@
-﻿import "package:flutter/material.dart";
+import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "../../../../core/theme/app_colors.dart";
 import "../providers/register_controller.dart";
-import "../providers/auth_controller.dart";
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
@@ -89,201 +88,216 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text("Yeni Klinik Kaydı"), centerTitle: true),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const SizedBox(height: 24),
-              TextFormField(
-                controller: _clinicNameCtrl,
-                decoration: InputDecoration(
-                  labelText: "Klinik Adı",
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  filled: true,
-                  fillColor: Colors.white,
-                  prefixIcon: const Icon(Icons.business),
-                ),
-                validator: (val) {
-                  if (val == null || val.isEmpty) {
-                    return "Klinik adı gerekli";
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _fullNameCtrl,
-                decoration: InputDecoration(
-                  labelText: "Ad Soyad",
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  filled: true,
-                  fillColor: Colors.white,
-                  prefixIcon: const Icon(Icons.person),
-                ),
-                validator: (val) {
-                  if (val == null || val.isEmpty) {
-                    return "Ad soyad gerekli";
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _phoneCtrl,
-                keyboardType: TextInputType.phone,
-                decoration: InputDecoration(
-                  labelText: "Telefon",
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  filled: true,
-                  fillColor: Colors.white,
-                  prefixIcon: const Icon(Icons.phone),
-                ),
-                validator: (val) {
-                  if (val == null || val.isEmpty) {
-                    return "Telefon gerekli";
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _emailCtrl,
-                keyboardType: TextInputType.emailAddress,
-                decoration: InputDecoration(
-                  labelText: "E-posta",
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  filled: true,
-                  fillColor: Colors.white,
-                  prefixIcon: const Icon(Icons.email),
-                ),
-                validator: (val) {
-                  if (val == null || val.isEmpty) {
-                    return "E-posta gerekli";
-                  }
-                  if (!val.contains("@")) {
-                    return "Geçerli e-posta girin";
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _passwordCtrl,
-                obscureText: _obscurePassword,
-                decoration: InputDecoration(
-                  labelText: "Şifre",
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  filled: true,
-                  fillColor: Colors.white,
-                  prefixIcon: const Icon(Icons.lock),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _obscurePassword
-                          ? Icons.visibility_off
-                          : Icons.visibility,
-                    ),
-                    onPressed: () {
-                      setState(() => _obscurePassword = !_obscurePassword);
-                    },
-                  ),
-                ),
-                validator: (val) {
-                  if (val == null || val.isEmpty) {
-                    return "Şifre gerekli";
-                  }
-                  if (val.length < 6) {
-                    return "Şifre en az 6 karakter olmalı";
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _confirmPasswordCtrl,
-                obscureText: _obscureConfirm,
-                decoration: InputDecoration(
-                  labelText: "Şifre Tekrar",
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  filled: true,
-                  fillColor: Colors.white,
-                  prefixIcon: const Icon(Icons.lock),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _obscureConfirm ? Icons.visibility_off : Icons.visibility,
-                    ),
-                    onPressed: () {
-                      setState(() => _obscureConfirm = !_obscureConfirm);
-                    },
-                  ),
-                ),
-                validator: (val) {
-                  if (val == null || val.isEmpty) {
-                    return "Şifre tekrarı gerekli";
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 32),
-              SizedBox(
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: isLoading ? null : _handleRegister,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    shape: RoundedRectangleBorder(
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              AppColors.scaffoldBackground,
+              Color(0xFFE0F7F3),
+              Colors.white,
+            ],
+          ),
+        ),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SizedBox(height: 24),
+                TextFormField(
+                  controller: _clinicNameCtrl,
+                  decoration: InputDecoration(
+                    labelText: "Klinik Adı",
+                    border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
+                    filled: true,
+                    fillColor: Colors.white,
+                    prefixIcon: const Icon(Icons.business),
                   ),
-                  child:
-                      isLoading
-                          ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
-                            ),
-                          )
-                          : const Text(
-                            "KAYDOL",
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
+                  validator: (val) {
+                    if (val == null || val.isEmpty) {
+                      return "Klinik adı gerekli";
+                    }
+                    return null;
+                  },
                 ),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text("Zaten hesabınız var mı? "),
-                  TextButton(
-                    onPressed: () {
-                      Navigator.pushNamed(context, "/auth/login");
-                    },
-                    child: const Text("Giriş Yap"),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _fullNameCtrl,
+                  decoration: InputDecoration(
+                    labelText: "Ad Soyad",
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    filled: true,
+                    fillColor: Colors.white,
+                    prefixIcon: const Icon(Icons.person),
                   ),
-                ],
-              ),
-              const SizedBox(height: 24),
-            ],
+                  validator: (val) {
+                    if (val == null || val.isEmpty) {
+                      return "Ad soyad gerekli";
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _phoneCtrl,
+                  keyboardType: TextInputType.phone,
+                  decoration: InputDecoration(
+                    labelText: "Telefon",
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    filled: true,
+                    fillColor: Colors.white,
+                    prefixIcon: const Icon(Icons.phone),
+                  ),
+                  validator: (val) {
+                    if (val == null || val.isEmpty) {
+                      return "Telefon gerekli";
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _emailCtrl,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: InputDecoration(
+                    labelText: "E-posta",
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    filled: true,
+                    fillColor: Colors.white,
+                    prefixIcon: const Icon(Icons.email),
+                  ),
+                  validator: (val) {
+                    if (val == null || val.isEmpty) {
+                      return "E-posta gerekli";
+                    }
+                    if (!val.contains("@")) {
+                      return "Geçerli e-posta girin";
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _passwordCtrl,
+                  obscureText: _obscurePassword,
+                  decoration: InputDecoration(
+                    labelText: "Şifre",
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    filled: true,
+                    fillColor: Colors.white,
+                    prefixIcon: const Icon(Icons.lock),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscurePassword
+                            ? Icons.visibility_off
+                            : Icons.visibility,
+                      ),
+                      onPressed: () {
+                        setState(() => _obscurePassword = !_obscurePassword);
+                      },
+                    ),
+                  ),
+                  validator: (val) {
+                    if (val == null || val.isEmpty) {
+                      return "Şifre gerekli";
+                    }
+                    if (val.length < 6) {
+                      return "Şifre en az 6 karakter olmalı";
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _confirmPasswordCtrl,
+                  obscureText: _obscureConfirm,
+                  decoration: InputDecoration(
+                    labelText: "Şifre Tekrar",
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    filled: true,
+                    fillColor: Colors.white,
+                    prefixIcon: const Icon(Icons.lock),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscureConfirm
+                            ? Icons.visibility_off
+                            : Icons.visibility,
+                      ),
+                      onPressed: () {
+                        setState(() => _obscureConfirm = !_obscureConfirm);
+                      },
+                    ),
+                  ),
+                  validator: (val) {
+                    if (val == null || val.isEmpty) {
+                      return "Şifre tekrarı gerekli";
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 32),
+                SizedBox(
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed: isLoading ? null : _handleRegister,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child:
+                        isLoading
+                            ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                            : const Text(
+                              "KAYDOL",
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text("Zaten hesabınız var mı? "),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.pushNamed(context, "/auth/login");
+                      },
+                      child: const Text("Giriş Yap"),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+              ],
+            ),
           ),
         ),
       ),

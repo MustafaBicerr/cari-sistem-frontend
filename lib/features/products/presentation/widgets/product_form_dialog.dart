@@ -98,7 +98,12 @@ class _ProductFormDialogState extends ConsumerState<ProductFormDialog>
     _criticalStockCtrl.text = p.criticalStockLevel.round().toString();
     _vatRateCtrl.text = p.vatRate.toString();
     _selectedUnit = p.unitType;
-    _networkImageUrl = p.fullImageUrl;
+    // Görsel için, fullImageUrl'de localhost gelse bile
+    // ImageUtils ile doğru host'a göre normalize edelim.
+    _networkImageUrl = ImageUtils.getImageUrl(
+      p.customImagePath,
+      p.fullImageUrl,
+    );
 
     // 🔥 AKILLI OKUMA (Geriye Dönük Uyumluluk)
     final localData = p.localDetails ?? {};
@@ -473,128 +478,138 @@ class _ProductFormDialogState extends ConsumerState<ProductFormDialog>
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         backgroundColor: Colors.white,
         insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-        child: Container(
-          width: 700,
-          constraints: const BoxConstraints(maxHeight: 850),
-          child: Column(
-            children: [
-              // HEADER
-              Padding(
-                padding: const EdgeInsets.all(20),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      isEditing ? "Ürün Düzenle" : "Yeni Ürün Girişi",
-                      style: const TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: _handleCancel,
-                      icon: const Icon(Icons.close),
-                    ),
-                  ],
-                ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final screenHeight = MediaQuery.of(context).size.height;
+            final maxDialogHeight =
+                screenHeight - 48; // üst/alt için güvenli pay
+
+            return ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: 700,
+                maxHeight: maxDialogHeight,
               ),
+              child: Column(
+                children: [
+                  // HEADER
+                  Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          isEditing ? "Ürün Düzenle" : "Yeni Ürün Girişi",
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: _handleCancel,
+                          icon: const Icon(Icons.close),
+                        ),
+                      ],
+                    ),
+                  ),
 
-              // TABS
-              TabBar(
-                controller: _tabController,
-                labelColor: AppColors.primary,
-                unselectedLabelColor: AppColors.textSecondary,
-                indicatorColor: AppColors.primary,
-                indicatorWeight: 3,
-                labelStyle: const TextStyle(fontWeight: FontWeight.bold),
-                tabs: [
-                  const Tab(text: "Genel Bilgiler"),
-                  const Tab(text: "Detaylar"),
-                  const Tab(text: "Notlar"),
-                  if (isEditing) const Tab(text: "Stok Geçmişi"),
-                ],
-              ),
-
-              const Divider(height: 1),
-
-              // CONTENT
-              Expanded(
-                child: Form(
-                  key: _formKey,
-                  child: TabBarView(
+                  // TABS
+                  TabBar(
                     controller: _tabController,
-                    children: [
-                      _buildGeneralTab(isEditing),
-                      _buildDetailsTab(),
-                      _buildNotesTab(),
-                      if (isEditing) _buildStockHistoryTab(),
+                    labelColor: AppColors.primary,
+                    unselectedLabelColor: AppColors.textSecondary,
+                    indicatorColor: AppColors.primary,
+                    indicatorWeight: 3,
+                    labelStyle: const TextStyle(fontWeight: FontWeight.bold),
+                    tabs: [
+                      const Tab(text: "Genel Bilgiler"),
+                      const Tab(text: "Detaylar"),
+                      const Tab(text: "Notlar"),
+                      if (isEditing) const Tab(text: "Stok Geçmişi"),
                     ],
                   ),
-                ),
-              ),
 
-              const Divider(height: 1),
+                  const Divider(height: 1),
 
-              // FOOTER
-              Padding(
-                padding: const EdgeInsets.all(20),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    if (isEditing)
-                      TextButton.icon(
-                        onPressed: _handleDelete,
-                        icon: const Icon(Icons.delete_outline, size: 20),
-                        style: TextButton.styleFrom(
-                          foregroundColor: AppColors.error,
-                        ),
-                        label: const Text("Ürünü Sil"),
+                  // CONTENT
+                  Expanded(
+                    child: Form(
+                      key: _formKey,
+                      child: TabBarView(
+                        controller: _tabController,
+                        children: [
+                          _buildGeneralTab(isEditing),
+                          _buildDetailsTab(),
+                          _buildNotesTab(),
+                          if (isEditing) _buildStockHistoryTab(),
+                        ],
                       ),
-                    const Spacer(),
-                    TextButton(
-                      onPressed: _handleCancel,
-                      style: TextButton.styleFrom(
-                        foregroundColor: AppColors.textSecondary,
-                      ),
-                      child: const Text("Vazgeç"),
                     ),
-                    const SizedBox(width: 16),
-                    ElevatedButton(
-                      onPressed: _isLoading ? null : _handleSubmit,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 32,
-                          vertical: 16,
+                  ),
+
+                  const Divider(height: 1),
+
+                  // FOOTER
+                  Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        if (isEditing)
+                          TextButton.icon(
+                            onPressed: _handleDelete,
+                            icon: const Icon(Icons.delete_outline, size: 20),
+                            style: TextButton.styleFrom(
+                              foregroundColor: AppColors.error,
+                            ),
+                            label: const Text("Ürünü Sil"),
+                          ),
+                        const Spacer(),
+                        TextButton(
+                          onPressed: _handleCancel,
+                          style: TextButton.styleFrom(
+                            foregroundColor: AppColors.textSecondary,
+                          ),
+                          child: const Text("Vazgeç"),
                         ),
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
+                        const SizedBox(width: 12),
+                        ElevatedButton(
+                          onPressed: _isLoading ? null : _handleSubmit,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 24,
+                              vertical: 16,
+                            ),
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          child:
+                              _isLoading
+                                  ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                  : Text(
+                                    isEditing
+                                        ? "Değişiklikleri Kaydet"
+                                        : "Ürünü Kaydet",
+                                  ),
                         ),
-                      ),
-                      child:
-                          _isLoading
-                              ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  color: Colors.white,
-                                  strokeWidth: 2,
-                                ),
-                              )
-                              : Text(
-                                isEditing
-                                    ? "Değişiklikleri Kaydet"
-                                    : "Ürünü Kaydet",
-                              ),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );
@@ -624,70 +639,65 @@ class _ProductFormDialogState extends ConsumerState<ProductFormDialog>
 
           const SizedBox(height: 16),
 
+          // Mobilde daha ferah görünüm için:
+          // Ürün adının altında tam genişlikte barkod alanı,
+          // onun altında alış/satış fiyat satırı.
+          TextFormField(
+            controller: _barcodeCtrl,
+            readOnly: isEditing,
+            decoration: InputDecoration(
+              labelText: "Barkod",
+              prefixIcon: const Icon(Icons.qr_code),
+              fillColor: isEditing ? Colors.grey.shade100 : null,
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
           Row(
             children: [
+              // 🔥 ALIŞ FİYATI: SADECE OKUNUR VE TARİHÇELİ
               Expanded(
-                flex: 2,
                 child: TextFormField(
-                  controller: _barcodeCtrl,
-                  readOnly: isEditing,
+                  controller: _buyPriceCtrl,
+                  readOnly: true, // Kilitlendi
+                  style: const TextStyle(fontWeight: FontWeight.bold),
                   decoration: InputDecoration(
-                    labelText: "Barkod",
-                    prefixIcon: const Icon(Icons.qr_code),
-                    fillColor: isEditing ? Colors.grey.shade100 : null,
+                    labelText: "Alış",
+                    suffixText: "₺",
+                    fillColor: Colors.grey.shade100, // Görsel kilit
+                    filled: true,
+                    suffixIcon:
+                        isEditing
+                            ? IconButton(
+                              icon: const Icon(
+                                Icons.history,
+                                color: AppColors.primary,
+                              ),
+                              tooltip: "Fiyat Geçmişi",
+                              onPressed: _showPriceHistory,
+                            )
+                            : const Tooltip(
+                              message: "Fatura girildikçe güncellenir",
+                              child: Icon(
+                                Icons.lock_outline,
+                                size: 16,
+                                color: Colors.grey,
+                              ),
+                            ),
                   ),
                 ),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 12),
               Expanded(
-                flex: 3,
-                child: Row(
-                  children: [
-                    // 🔥 ALIŞ FİYATI: SADECE OKUNUR VE TARİHÇELİ
-                    Expanded(
-                      child: TextFormField(
-                        controller: _buyPriceCtrl,
-                        readOnly: true, // Kilitlendi
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                        decoration: InputDecoration(
-                          labelText: "Alış",
-                          suffixText: "₺",
-                          fillColor: Colors.grey.shade100, // Görsel kilit
-                          filled: true,
-                          suffixIcon:
-                              isEditing
-                                  ? IconButton(
-                                    icon: const Icon(
-                                      Icons.history,
-                                      color: AppColors.primary,
-                                    ),
-                                    tooltip: "Fiyat Geçmişi",
-                                    onPressed: _showPriceHistory,
-                                  )
-                                  : const Tooltip(
-                                    message: "Fatura girildikçe güncellenir",
-                                    child: Icon(
-                                      Icons.lock_outline,
-                                      size: 16,
-                                      color: Colors.grey,
-                                    ),
-                                  ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _sellPriceCtrl,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: "Satış",
-                          suffixText: "₺",
-                        ),
-                        validator: (v) => v!.isEmpty ? "Zorunlu" : null,
-                      ),
-                    ),
-                  ],
+                child: TextFormField(
+                  controller: _sellPriceCtrl,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: "Satış",
+                    suffixText: "₺",
+                  ),
+                  validator: (v) => v!.isEmpty ? "Zorunlu" : null,
                 ),
               ),
             ],

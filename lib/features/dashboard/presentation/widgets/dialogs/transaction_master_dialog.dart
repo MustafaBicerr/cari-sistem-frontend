@@ -565,7 +565,7 @@ class _MasterListItemState extends State<_MasterListItem> {
           ),
         ),
 
-        // 2. DETAY ALANI (Accordion)
+        // 2. DETAY ALANI (Accordion): header yatay scroll, ürün listesi dikey+yatay scroll (sabit yükseklik)
         if (isExpanded)
           Container(
             padding: const EdgeInsets.all(16),
@@ -574,21 +574,27 @@ class _MasterListItemState extends State<_MasterListItem> {
               borderRadius: BorderRadius.circular(12),
             ),
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Row(
-                  children: [
-                    Icon(Icons.person, size: 14, color: Colors.grey),
-                    const SizedBox(width: 4),
-                    Text(
-                      item.cashierName,
-                      style: const TextStyle(fontSize: 12, color: Colors.grey),
-                    ),
-                    const Spacer(),
-
-                    // 🔥 ZAM UYARISI (RESTORE EDİLDİ)
-                    if (inflationDiff > 0) ...[
-                      Row(
-                        children: [
+                // Header: uzun metin taşmasın diye yatay scroll (sabit yükseklik)
+                SizedBox(
+                  height: 44,
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.person, size: 14, color: Colors.grey),
+                        const SizedBox(width: 4),
+                        Text(
+                          item.cashierName,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        if (inflationDiff > 0) ...[
                           Text(
                             "Zam Farkı: ${currency.format(inflationDiff)}",
                             style: const TextStyle(
@@ -599,127 +605,170 @@ class _MasterListItemState extends State<_MasterListItem> {
                           ),
                           const SizedBox(width: 4),
                           InkWell(
-                            onTap:
-                                () => _showInflationDetailsDialog(
-                                  context,
-                                  item.items,
-                                ),
+                            onTap: () => _showInflationDetailsDialog(
+                              context,
+                              item.items,
+                            ),
                             child: const Icon(
                               Icons.info_outline,
                               size: 16,
                               color: Colors.orange,
                             ),
                           ),
-                        ],
-                      ),
-                      const SizedBox(width: 8),
-                      const Text("|", style: TextStyle(color: Colors.grey)),
-                      const SizedBox(width: 8),
-                      Text(
-                        "Güncel Borç: ${currency.format(currentTotalDebt)}",
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.red,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-                const Divider(),
-
-                // Ürün Listesi
-                ...item.items.map((prod) {
-                  final isPaid = prod.paymentStatus == 'PAID';
-                  final hasInflation =
-                      !isPaid && (prod.currentPrice > prod.snapshotPrice);
-                  final statusColor = isPaid ? Colors.green : Colors.red;
-
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          flex: 4,
-                          child: RichText(
-                            text: TextSpan(
-                              text:
-                                  "${prod.productName} (x${prod.quantity.toStringAsFixed(0)}) ",
-                              style: const TextStyle(
-                                color: AppColors.textPrimary,
-                                fontSize: 13,
-                              ),
-                              children: [
-                                TextSpan(
-                                  text: isPaid ? "(Ödendi)" : "(Ödenmedi)",
-                                  style: TextStyle(
-                                    color: statusColor,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        Expanded(
-                          flex: 2,
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              // 🔥 ZAM İKONU (RESTORE EDİLDİ)
-                              if (hasInflation) ...[
-                                const Text(
-                                  "Zamlandı",
-                                  style: TextStyle(
-                                    color: Colors.red,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(width: 4),
-                                InkWell(
-                                  onTap:
-                                      () => _showProductHistoryDialog(
-                                        context,
-                                        prod,
-                                      ),
-                                  child: const Icon(
-                                    Icons.info,
-                                    size: 16,
-                                    color: Colors.red,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                              ],
-                              Text(
-                                currency.format(prod.displayUnitPrice),
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color:
-                                      hasInflation
-                                          ? Colors.red
-                                          : Colors.grey[700],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Expanded(
-                          flex: 2,
-                          child: Text(
-                            currency.format(prod.displayTotalPrice),
-                            textAlign: TextAlign.end,
+                          const SizedBox(width: 8),
+                          const Text("|", style: TextStyle(color: Colors.grey)),
+                          const SizedBox(width: 8),
+                          Text(
+                            "Güncel Borç: ${currency.format(currentTotalDebt)}",
                             style: const TextStyle(
-                              fontSize: 13,
+                              fontSize: 12,
+                              color: Colors.red,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                        ),
+                        ],
                       ],
                     ),
-                  );
-                }),
+                  ),
+                ),
+                const Divider(),
+
+                // Ürün listesi: sabit yükseklik (220px), dikey scroll; tek yatay scroll ile tüm satırlar birlikte (zebra)
+                SizedBox(
+                  height: 220,
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.vertical,
+                    child: SizedBox(
+                      height: 36.0 * item.items.length,
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(minWidth: 600),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              for (final entry
+                                  in item.items.asMap().entries)
+                                Container(
+                                  height: 36,
+                                  color: entry.key.isEven
+                                      ? Colors.white
+                                      : const Color(0xFFF3F6FB),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 4,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      SizedBox(
+                                        width: 260,
+                                        child: RichText(
+                                          text: TextSpan(
+                                            text:
+                                                "${entry.value.productName} (x${entry.value.quantity.toStringAsFixed(0)}) ",
+                                            style: const TextStyle(
+                                              color: AppColors.textPrimary,
+                                              fontSize: 13,
+                                            ),
+                                            children: [
+                                              TextSpan(
+                                                text: entry.value
+                                                            .paymentStatus ==
+                                                        'PAID'
+                                                    ? "(Ödendi)"
+                                                    : "(Ödenmedi)",
+                                                style: TextStyle(
+                                                  color: entry.value
+                                                              .paymentStatus ==
+                                                          'PAID'
+                                                      ? Colors.green
+                                                      : Colors.red,
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      SizedBox(
+                                        width: 120,
+                                        child: Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.end,
+                                          children: [
+                                            if (!(entry.value.paymentStatus ==
+                                                    'PAID') &&
+                                                (entry.value.currentPrice >
+                                                    entry.value
+                                                        .snapshotPrice)) ...[
+                                              const Text(
+                                                "Zamlandı",
+                                                style: TextStyle(
+                                                  color: Colors.red,
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 4),
+                                              InkWell(
+                                                onTap: () =>
+                                                    _showProductHistoryDialog(
+                                                  context,
+                                                  entry.value,
+                                                ),
+                                                child: const Icon(
+                                                  Icons.info,
+                                                  size: 16,
+                                                  color: Colors.red,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                            ],
+                                            Text(
+                                              currency.format(
+                                                entry.value.displayUnitPrice,
+                                              ),
+                                              style: TextStyle(
+                                                fontSize: 13,
+                                                color: !(entry.value
+                                                            .paymentStatus ==
+                                                        'PAID') &&
+                                                        (entry.value
+                                                                .currentPrice >
+                                                            entry.value
+                                                                .snapshotPrice)
+                                                    ? Colors.red
+                                                    : Colors.grey[700],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      SizedBox(
+                                        width: 110,
+                                        child: Text(
+                                          currency.format(
+                                            entry.value.displayTotalPrice,
+                                          ),
+                                          textAlign: TextAlign.end,
+                                          style: const TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),

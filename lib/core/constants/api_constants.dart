@@ -1,42 +1,54 @@
+import 'package:flutter/foundation.dart';
+
 class ApiConstants {
   static String get baseUrl {
-    // Tek kaynaklı yönetim için:
-    // - Development: LOCAL_API_BASE (localhost / emulator)
-    // - Production: PROD_API_BASE (sunucu IP / domain)
+    // Ortak yapı:
+    // - Development:
+    //   * Web & Desktop: localhost (MOBILE_API_BASE_DEV)
+    //   * Android emulator: 10.0.2.2 (MOBILE_API_BASE_ANDROID)
+    //   * iOS simulator / diğerleri: localhost (MOBILE_API_BASE_DEV)
+    // - Production (release build): MOBILE_API_BASE_PROD
     //
-    // Bu dosya git'e commit edilir; gerçek değerler .env ve
-    // --dart-define ile yönetilir.
-    const String devBase = String.fromEnvironment(
+    // Gerçek değerler sunucudaki .env dosyasından gelir ve
+    // build sırasında --dart-define ile aktarılır.
+    const devBase = String.fromEnvironment(
       'MOBILE_API_BASE_DEV',
       defaultValue: 'http://localhost:3000/api',
     );
-    const String androidBase = String.fromEnvironment(
+    const androidBase = String.fromEnvironment(
       'MOBILE_API_BASE_ANDROID',
       defaultValue: 'http://10.0.2.2:3000/api',
     );
-    const String prodBase = String.fromEnvironment(
+    const prodBase = String.fromEnvironment(
       'MOBILE_API_BASE_PROD',
       defaultValue: 'https://api.vetapp.com.tr/api',
     );
 
-    // Basit strateji:
-    // - Debug build'lerde dev/android değerleri
-    // - Release build'lerde prod değeri
-    // (Detaylı ortam yönetimi için ayrı flavor'lar eklenebilir.)
-    assert(() {
-      // Debug modda: Android emulator için özel hostname kullan
-      // (Gerekirse platform kontrolü ileride eklenebilir)
-      return true;
-    }());
+    const isRelease = bool.fromEnvironment('dart.vm.product');
 
-    const bool isRelease = bool.fromEnvironment('dart.vm.product');
+    // 1) Production: her platformda doğrudan PROD URL
     if (isRelease) {
       return prodBase;
     }
-    // Debug / profile:
-    // Android emulator kullanılıyorsa derleme tarafında
-    // MOBILE_API_BASE_ANDROID ile override edilebilir.
-    return androidBase.isNotEmpty ? androidBase : devBase;
+
+    // 2) Development / profile:
+    // Platforma göre doğru host'u seç.
+
+    // Web & desktop: backend aynı makinede, doğrudan localhost kullan.
+    if (kIsWeb ||
+        defaultTargetPlatform == TargetPlatform.windows ||
+        defaultTargetPlatform == TargetPlatform.macOS ||
+        defaultTargetPlatform == TargetPlatform.linux) {
+      return devBase;
+    }
+
+    // Android emulator: host makineye 10.0.2.2 üzerinden gider.
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      return androidBase;
+    }
+
+    // iOS simulator veya diğer platformlar: varsayılan olarak localhost.
+    return devBase;
   }
 
   static String get baseUrlImage {
